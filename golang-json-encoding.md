@@ -60,7 +60,7 @@ type Object struct {
 运行次数均为1000,000 次
 
 | type\\ keys 个数 | 10 | 100 | 1000 | 
-|:    :|:  :|: :|: :|
+|:----------------:|:---|:----|:-----|
 | struct |3.84s | 33.72s | 5m42.34s |
 | map[string]string | 7.59s| 1m20.03s | 17m21.47s  |
 | no sorting map[string]string | 6.40s | 57.61s | 10m4.39s |

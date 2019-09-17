@@ -221,7 +221,7 @@ func Log(logf lg.AppLogFunc) Decorator {
 3. 目前HTTP 客户端支持以下的请求:
 
 | Method | Router                    | Param          |  Response |
-|:      :|:                          |:               |:          |
+|:------:|:-------------------------:|:---------------|:----------|
 | GET    | /ping                     | -              |  "OK"     |
 | GET    | /info                     | -              | 返回版本信息 |
 | GET    | /debug                    | -              | 返回 db 中所有信息 |
