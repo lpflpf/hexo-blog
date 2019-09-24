@@ -157,10 +157,10 @@ Tcp Listener 是用来监听客户端发来的TCP 消息。
   - IDENTIFY
     - 用于消息的认证，将nsqd信息发送给nsqlookupd.
     - 消息格式  `IDENTIFY\nBODYLEN(32bit)BODY`
-```    
-|8bit    |1 bit | 32bit     | N bit |
-|IDENTIFY| 换行 | body 长度  | body  |
-```
+        ```    
+        |8bit    |1 bit | 32bit     | N bit |
+        |IDENTIFY| 换行 | body 长度  | body  |
+        ```
     - BODY 为json格式
     - 包含了如下字段：
         - 广播地址
