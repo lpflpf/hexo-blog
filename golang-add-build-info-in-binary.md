@@ -106,3 +106,5 @@ go build -ldflags "$LD_FLAGS" main.go
 #### 参考文档
 1. [golang 连接说明](https://golang.org/cmd/link/)
 2. [version 包](https://github.com/lpflpf/version/)
+
+![](/images/weixin_logo.png)

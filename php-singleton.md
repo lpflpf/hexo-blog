@@ -3,7 +3,7 @@ title:      "PHP singleton"
 subtitle:   "PHP 单例模式"
 date:       2018-05-30
 author:     "李朋飞"
-header-img: "img/post-bg-2015.jpg"
+header-img: "intro/runner.jpg"
 tags:
     - singleton
     - serialize / unserialize

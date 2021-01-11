@@ -133,6 +133,7 @@ category:
     - strconv
     - strings
     - sync
+      - 通过编译优化，将 Mutex.Lock, Mutex.Unlock, RWMutex.Lock, RWMutex.RUnlock, Once.Do 编译优化[inlining](https://github.com/golang/go/wiki/CompilerOptimizations#function-inlining) 化。对于amd64上无竞争的互斥量, Once.Do 快了一倍， Mutex/RWMutex 快10%
     - syncall
     - syscall/js
     - testing
@@ -140,9 +141,5 @@ category:
     - text/template
     - time
     - unicode
-
-    
-
-
 
 > [go 1.13 release note ](https://golang.google.cn/doc/go1.13) 
