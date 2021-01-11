@@ -159,7 +159,7 @@ Minimum mutator utilization：最低 Mutator 利用率  （主要是GC 的评价
 ### 自定义 Task 和 Region
 当然，还可以指定task 和 Region 做分析，下面是官方举的例子:
 
-```golang
+```go
 //filepath:  src/runtime/trace/trace.go
 ctx, task := trace.NewTask(ctx, "makeCappuccino")
 trace.Log(ctx, "orderID", orderID)

@@ -13,7 +13,7 @@ tags:
 ### 内部数据结构
 
 slice 仅有三个字段，其中array 是保存数据的部分，len 字段为长度，cap 为容量。
-```golang
+```go
 type slice struct {
   array unsafe.Pointer  // 数据部分
   len   int          // 长度
@@ -23,7 +23,7 @@ type slice struct {
 
 通过下面代码可以输出空slice 的大小:
 
-```golang
+```go
 package main
 
 import "fmt"
@@ -64,7 +64,7 @@ func main() {
 
 下面的代码主要是做了容量大小的判断，以及内存的分配。
 
-```golang
+```go
 func makeslice(et *_type, len, cap int) unsafe.Pointer {
   // 获取需要申请的内存大小
   mem, overflow := math.MulUintptr(et.size, uintptr(cap))
@@ -93,7 +93,7 @@ func makeslice(et *_type, len, cap int) unsafe.Pointer {
 上面的DX 存放的就是array 指针，AX 是数据的偏移. 将 123 存入数组。
 而对于容量不够的情况，就需要对slice 进行扩容。这也是slice 比较关心的地方。 （因为对于大slice，grow slice会影响到内存的分配和执行的效率）
 
-```golang
+```go
 func growslice(et *_type, old slice, cap int) slice {
     // 静态分析, 内存扫描
     // ...
@@ -202,7 +202,7 @@ func growslice(et *_type, old slice, cap int) slice {
 
 #### 切片的浅拷贝
 
-```golang
+```go
     shallowCopy := data[:1]
 
     ptr1 := unsafe.Pointer(&shallowCopy)
@@ -221,7 +221,7 @@ func growslice(et *_type, old slice, cap int) slice {
 
 深拷贝也比较简单，只是做了一次内存的深拷贝。
 
-```golang
+```go
 func slicecopy(to, fm slice, width uintptr) int {
   if fm.len == 0 || to.len == 0 {
     return 0
@@ -285,7 +285,7 @@ go tool compile -N -S slice.go > slice.S
 
 5. 还有一点需要提醒， type 长度为0的对象。比如说 struct{} 类型。(所以，很多使用chan struct{} 做channel 的传递，节省内存)
 
-```golang
+```go
 package main
 
 import "fmt"

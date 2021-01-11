@@ -18,13 +18,13 @@ golang http Client 的实现,  从 源码入手， 总结Client 的实现方式�
 
 在http client 的实现时，所有类型的http请求，均来自于如下方法：
 
-```golang
+```go
 func (c *Client) do(req *Request) (retres *Response, reterr error) {}
 ```
 
 do 方法中，考虑了重定向问题，以及请求cookie携带的相关问题。而最终发送 request 到获取 response ，来自于 RoundTriper 接口。该接口中仅有一个方法，是用来实现 Request 到 Response 转换的:
 
-```golang
+```go
 type RoundTripper interface {
   RoundTrip(*Request) (*Response, error)
 }
@@ -44,7 +44,7 @@ Transport 是我们最常用的 RoundTripper 接口的实现，它实现了http�
 
 连接的管理，Transport 中主要用到了如下的几个容器：
 
-```golang
+```go
 // 保存连接池， 按照Key 区分连接池
 idleConn     map[connectMethodKey][]*persistConn
 // 等待连接的队列
@@ -59,7 +59,7 @@ connsPerHostWait map[connectMethodKey]wantConnQueue
 
 从上述的几个容器可以看到，主要保存了当前正在使用的连接池，当前正在等待连接的队列，以及当前通过Dial 请求连接的池子等。这些容器使用的维度为connectMethodKey. 这个结构的定义如下：
 
-```golang
+```go
 type connectMethodKey struct {
   // 代理，scheme，地址，
   proxy, scheme, addr string

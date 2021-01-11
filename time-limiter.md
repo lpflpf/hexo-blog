@@ -33,7 +33,7 @@ tags:
 
 下面是对一个限流器的定义：
 
-```golang
+```go
 type Limiter struct {
   limit Limit // 放入桶的频率   （Limit 为 float64类型）
   burst int   // 桶的大小
@@ -49,7 +49,7 @@ type Limiter struct {
 
 在令牌发放后，会被保留在Reservation 对象中，定义如下：
 
-```golang
+```go
 type Reservation struct {
   ok        bool  // 是否满足条件分配到了tokens
   lim       *Limiter // 发送令牌的限流器
@@ -65,7 +65,7 @@ Reservation 对象，描述了一个在达到 timeToAct 时间后，可以获取
 
 官方提供的限流器有阻塞等待式的，也有直接判断方式的，还有提供了自己维护预留式的，但核心的实现都是下面的reserveN 方法。
 
-```golang
+```go
 // 在 now 时间需要拿到n个令牌，最多可以等待的时间为maxFutureResrve
 // 结果将返回一个预留令牌的对象
 func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duration) Reservation {
@@ -124,7 +124,7 @@ func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duratio
 
 下面我们通过一个简单的例子，学习上面介绍的限流器的使用。
 
-```golang
+```go
   limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 10)
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     if limiter.Allow() {// do something

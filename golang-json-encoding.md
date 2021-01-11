@@ -33,7 +33,7 @@ type Object struct {
 
 对比程序如下：
 
-```golang
+```go
 	obj := Object{}
 	json.Unmarshal([]byte(str), &obj)
 
@@ -77,7 +77,7 @@ type Object struct {
 
 - map 编码
 
-```golang
+```go
 // go/src/encoding/json/encode.go 
 func (me *mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 	if v.IsNil() {
@@ -112,7 +112,7 @@ func (me *mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 
 - struct 编码
 
-```golang
+```go
 // go/src/encoding/json/encode.go
 
 

@@ -69,7 +69,7 @@ golang sync 包中:
     - …… 
  禁止拷贝，实现方式采用noCopy 的方式。
 
-```golang
+```go
 package main
 
 import "fmt"

@@ -14,7 +14,7 @@ tags:
 
 在golang 中，访问 map 的方式有两种，例子如下：
 
-```golang
+```go
 
 val := example1Map[key1]
 val, ok := example1Map[key1]
@@ -27,7 +27,7 @@ val, ok := example1Map[key1]
 
 对于不同的访问方式，会使用不同的方法，下面是内部提供的几种方法，我们一起来学习：
 
-```golang
+```go
 
 // 迭代器中使用
 func mapaccessK(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, unsafe.Pointer){}
@@ -47,7 +47,7 @@ func mapaccess2_fat(t *maptype, h *hmap, key, zero unsafe.Pointer) (unsafe.Point
 
 这两个方法，从字面上来看多了个fat，就是个宽数据。何以为宽，我们从下面代码找到原因：
 
-```golang
+```go
 //src/cmd/compile/internal/gc/walk.go
 
 if w := t.Elem().Width; w <= 1024 { // 1024 must match runtime/map.go:maxZero
@@ -61,7 +61,7 @@ if w := t.Elem().Width; w <= 1024 { // 1024 must match runtime/map.go:maxZero
 这是构建语法树时，mapaccess1 相关的代码（mapaccess2_fat 也类似）， 如果val 大于1024byte 的宽度，那会调用fat 后缀的方法。
 原因是，在map.go 文件中，定义了val 0值的数组，代码如下：
 
-```golang
+```go
 const maxZero = 1024 // must match value in cmd/compile/internal/gc/walk.go
 var zeroVal [maxZero]byte
 ```
@@ -72,7 +72,7 @@ var zeroVal [maxZero]byte
 
 mapaccess1 与 mapaccess2 的差别在于是否返回返回值，mapaccess2 将返回bool 类型作为是否不存在相应key的标识，mapaccess1 不会。所以，这里着重分析mapaccess2. 代码如下：
 
-```golang
+```go
 func mapaccess2(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, bool) {
   // 竟态分析 && 内存扫描
   // ...
@@ -140,7 +140,7 @@ bucketloop:
 
 这里需要注意一点：在tophash 数组中不仅会标识是否匹配hash值，还会标识下个数组中是否还有元素，减少匹配的次数。代码如下：
 
-```golang
+```go
 if b.tophash[i] != top {
   if b.tophash[i] == emptyRest {
     break bucketloop
@@ -151,7 +151,7 @@ if b.tophash[i] != top {
 
 tophash 的值有多种情况, 如果小于minTopHash，则作为标记使用。下面是标识含义:
 
-```golang
+```go
   // 标记为空，且后面没有数据了 (包括overflow 和 index)
   emptyRest      = 0 
   // 在被删除的时候设置为空

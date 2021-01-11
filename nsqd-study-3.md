@@ -32,7 +32,7 @@ tags:
 程序入口 `github.com/nsq/apps/nsqd/main.go`
 
 1. 获取配置，并从metadata 的持久化文件中读取topic、channel 信息。meta 信息格式:
-```golang
+```go
     Topics []struct {
         Name     string `json:"name"`
         Paused   bool   `json:"paused"`
@@ -54,7 +54,7 @@ tags:
 
 #### 数据结构
 
-```golang
+```go
 type Topic struct {
     // 64bit atomic vars need to be first for proper alignment on 32bit platforms
     messageCount uint64    // 消息数量
@@ -93,7 +93,7 @@ type Topic struct {
 - 等待事件处理 (consumer 和 channel 相关)
   - 只有consumer 存在topic 订阅(Sub)之后，才会启动 Topic 的事件处理
 
-    ```golang
+    ```go
         for {
             select {
             // 消息可从二者中随机获取，所以topic 中消息是不保序的
@@ -159,7 +159,7 @@ type Topic struct {
 
 - putMessage
 
-  ```golang
+  ```go
 func (t *Topic) put(m *Message) error {
     select {
     case t.memoryMsgChan <- m:
@@ -189,7 +189,7 @@ channel 没有自己的事件操作，都是通过被动执行相关操作。
 
 #### 数据结构
 
-```golang
+```go
 type Channel struct {
     // 64bit atomic vars need to be first for proper alignment on 32bit platforms
     requeueCount uint64             // 重新消费的message 个数
@@ -264,7 +264,7 @@ type Channel struct {
 
   messagePump:
     
-  ```golang
+  ```go
 func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
     var err error
     var memoryMsgChan chan *Message
@@ -436,7 +436,7 @@ exit:
   - `in_flight_queue` 和 `delay_queue` 实现都是使用堆排序实现的优先队列
   - 从M 个channel 中随机筛选N个channel 做队列队列扫描, 每次获取的概率相同
 
-   ```golang
+   ```go
 func UniqRands(quantity int, maxval int) []int {
     if maxval < quantity {
         quantity = maxval

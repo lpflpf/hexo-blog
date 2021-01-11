@@ -18,7 +18,7 @@ Golang 语言也为我们提供了方便的性能分析工具pprof，方便我�
 ### WEB 工具
 golang 性能分析工具主要有几种，最常用的是使用web 界面的工具。我们举个简单的例子，将一个map数据做编码，编码100w次，例子如下：
 
-```golang
+```go
 package main
 
 import "encoding/json"
@@ -68,7 +68,7 @@ func main() {
 
 命令行工具，需要先抓取一段采样数据，采样数据可以通过web 的 profile 链接直接下载，也可以不启动web服务，直接采样。直接采样的好处是，可以直接采样我们需要优化的代码段的数据，而web采样的数据不一定会抓到我们执行的代码段（毕竟是通过采样实现的）。下面我们写一个直接采样的例子：
 
-```golang
+```go
 package main
 
 import "encoding/json"

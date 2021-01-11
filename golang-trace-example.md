@@ -12,7 +12,7 @@ tags:
 
 ### Show Code
 
-```golang
+```go
 // trace_example.go
 package main
 

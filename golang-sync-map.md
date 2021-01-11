@@ -20,7 +20,7 @@ category: golang
 
 sync.Map 和map 在使用上有较大区别。map 为内置类型，sync.Map 实质是实现了一个带有一些操作方法的Struct 对象。因此，在使用sync.Map包做数据存取时，其实是调用了对象的一些方法来实现的。下面是sync.Map使用的一个简单例子，包含了大部分日常所需方法。
 
-```golang
+```go
     var cache sync.Map
 	var k1 = "key1"
 	var v1 = []int{1, 2, 3}
@@ -56,7 +56,7 @@ sync.Map 和map 在使用上有较大区别。map 为内置类型，sync.Map 实
 
 为了更好的理解sync.Map，有必要学习 sync.Map 是如何实现的。数据结构如下：
 
-```golang 
+```go 
 type Map struct {
 	mu Mutex // 锁map的互斥锁
 	read atomic.Value // 读结构
@@ -98,7 +98,7 @@ var expunged = unsafe.Pointer(new(interface{}))
 
 Load 操作从Map中获取 key 对应的value 值。
 
-```golang
+```go
 func (m *Map) Load(key interface{}) (value interface{}, ok bool) {
     // 读操作首先从read中读取，如果读到数据，则返回
 	read, _ := m.read.Load().(readOnly)
@@ -141,7 +141,7 @@ Load中，如果在read中出现了，就不需要加锁。反之需要加锁。
 
 #### Store
 
-```golang
+```go
 func (m *Map) Store(key, value interface{}) {
 	// 首先看read中是否存在对应的key，如果存在，直接替换即可
 	read, _ := m.read.Load().(readOnly)
@@ -196,7 +196,7 @@ Store 方法略微复杂，在read中存在对应key时，直接替换即可，�
 
 #### Delete
 
-```golang
+```go
 func (m *Map) LoadAndDelete(key interface{}) (value interface{}, loaded bool) {
 	read, _ := m.read.Load().(readOnly)
 	e, ok := read.m[key]

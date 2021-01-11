@@ -12,7 +12,7 @@ golang map 操作，是map 实现中较复杂的逻辑。因为当赋值时，�
 
 首先，我们需要重新学习下map实现的数据结构：
 
-```golang
+```go
 type hmap struct {
   count     int
   flags     uint8  
@@ -45,7 +45,7 @@ hmap 是 map 实现的结构体。大部分字段在 第一节中已经学习过
 
 map 的赋值操作写法如下：
 
-```golang
+```go
 
    data := mapExample["hello"]
 
@@ -53,7 +53,7 @@ map 的赋值操作写法如下：
 
 赋值的实现，golang 为了对不同类型k做了优化，下面时一些实现方法：
 
-```golang
+```go
 func mapassign(t *maptype, h *hmap, key unsafe.Pointer) unsafe.Pointer {}
 func mapassign_fast32(t *maptype, h *hmap, key uint32) unsafe.Pointer {}
 func mapassign_fast32ptr(t *maptype, h *hmap, key unsafe.Pointer) unsafe.Pointer {}
@@ -69,7 +69,7 @@ func mapassign_faststr(t *maptype, h *hmap, s string) unsafe.Pointer {}
 
 ①  在查找key之前，会做异常检测，校验map是否未初始化，或正在并发写操作，如果存在，则抛出异常：（这就是为什么map 并发写回panic的原因）
 
-```golang
+```go
 if h == nil {
   panic(plainError("assignment to entry in nil map"))
 }
@@ -82,7 +82,7 @@ if h.flags&hashWriting != 0 {
 
 ② 需要计算key 对应的hash 值，如果buckets 为空（初始化的时候小于一定长度的map 不会初始化数据）还需要初始化一个bucket
 
-```golang
+```go
 alg := t.key.alg
 hash := alg.hash(key, uintptr(h.hash0))
 
@@ -96,7 +96,7 @@ if h.buckets == nil {
 
 ③ 通过hash 值，获取对应的bucket。如果map 还在迁移数据，还需要在oldbuckets中找对应的bucket，并搬迁到新的bucket。
 
-```golang
+```go
 
 // 通过hash 计算bucket的位置偏移
 bucket := hash & bucketMask(h.B)
@@ -113,7 +113,7 @@ top := tophash(hash)
 
 ④ 拿到bucket之后，还需要按照链表方式一个一个查，找到对应的key， 可能是已经存在的key，也可能需要新增。
 
-```golang
+```go
 for {
   for i := uintptr(0); i < bucketCnt; i++ {
 
@@ -170,7 +170,7 @@ c. 如果上面都没有，那就看下一个bucket
 
 ⑤ 插入数据前，会先检查数据太多了，需要扩容，如果需要扩容，那就从第③开始拿到新的bucket，并查找对应的位置。
 
-```golang
+```go
 if !h.growing() && (overLoadFactor(h.count+1, h.B) || tooManyOverflowBuckets(h.noverflow, h.B)) {
   hashGrow(t, h)
   goto again // Growing the table invalidates everything, so try again
@@ -179,7 +179,7 @@ if !h.growing() && (overLoadFactor(h.count+1, h.B) || tooManyOverflowBuckets(h.n
 
 ⑥ 如果刚才看没有有空的位置，那就需要在链表后追加一个bucket，拿到kv。
 
-```golang
+```go
 if inserti == nil {
   // all current buckets are full, allocate a new one.
   newb := h.newoverflow(t, b)
@@ -191,7 +191,7 @@ if inserti == nil {
 
 ⑦ 最后更新tophash 和 key 的字面值, 并解除hashWriting 约束
 
-```golang
+```go
 // 如果非指针数据（也就是直接赋值的数据），还需要申请内存和拷贝
 if t.indirectkey() {
   kmem := newobject(t.key)
@@ -225,7 +225,7 @@ if h.flags&hashWriting == 0 {
 
 当满足条件后，将开始扩容。如果满足条件二，扩容后的buckets 的数量和原来是一样的，说明可能是空kv占据的坑太多了，通过map扩容做内存整理。如果是因为kv 量多导致map负载过高，那就扩一倍的量。
 
-```golang
+```go
 func hashGrow(t *maptype, h *hmap) {
   bigger := uint8(1)
   // 如果是第二种情况，扩容大小为0
@@ -277,7 +277,7 @@ func hashGrow(t *maptype, h *hmap) {
 
 在数据赋值的第③步，会看需要操作的bucket是不是在旧的buckets里面，如果在就搬迁。下面是搬迁的具体操作：
 
-```golang
+```go
 func growWork(t *maptype, h *hmap, bucket uintptr) {
   // 首先把需要操作的bucket 搬迁
   evacuate(t, h, bucket&h.oldbucketmask())
@@ -295,7 +295,7 @@ nevacuate 标识的是当前的进度，如果都搬迁完，应该和2^B的长�
 
 ① 先要判断当前bucket是不是已经转移。 (oldbucket 标识需要搬迁的bucket 对应的位置)
 
-```golang
+```go
 b := (*bmap)(add(h.oldbuckets, oldbucket*uintptr(t.bucketsize)))
 // 判断
 if !evacuated(b) {
@@ -305,7 +305,7 @@ if !evacuated(b) {
 
 转移的判断直接通过tophash 就可以，判断tophash中第一个hash值即可 （tophash的作用可以参考第三讲）
 
-```golang
+```go
 func evacuated(b *bmap) bool {
   h := b.tophash[0]
   // 这个区间的flag 均是已被转移
@@ -315,7 +315,7 @@ func evacuated(b *bmap) bool {
 
 ② 如果没有被转移，那就要迁移数据了。数据迁移时，可能是迁移到大小相同的buckets上，也可能迁移到2倍大的buckets上。这里xy 都是标记目标迁移位置的标记：x 标识的是迁移到相同的位置，y 标识的是迁移到2倍大的位置上。我们先看下目标位置的确定：
 
-```golang
+```go
 var xy [2]evacDst
 x := &xy[0]
 x.b = (*bmap)(add(h.buckets, oldbucket*uintptr(t.bucketsize)))
@@ -332,7 +332,7 @@ if !h.sameSizeGrow() {
 
 ③ 确定bucket位置后，需要按照kv 一条一条做迁移。（目的就是清除空闲的kv）
 
-```golang
+```go
 
 // 遍历每个bucket
 for ; b != nil; b = b.overflow(t) {
@@ -407,7 +407,7 @@ for ; b != nil; b = b.overflow(t) {
 
 对于key 非间接使用的数据（即非指针数据），做内存回收
 
-```golang
+```go
 if h.flags&oldIterator == 0 && t.bucket.kind&kindNoPointers == 0 {
   b := add(h.oldbuckets, oldbucket*uintptr(t.bucketsize))
   ptr := add(b, dataOffset)
@@ -420,7 +420,7 @@ if h.flags&oldIterator == 0 && t.bucket.kind&kindNoPointers == 0 {
 
 ④ 如果当前搬迁的bucket 和 总体搬迁的bucket的位置是一样的，我们需要更新总体进度的标记 nevacuate
 
-```golang
+```go
 // newbit 是oldbuckets 的长度，也是nevacuate 的重点
 func advanceEvacuationMark(h *hmap, t *maptype, newbit uintptr) {
   // 首先更新标记

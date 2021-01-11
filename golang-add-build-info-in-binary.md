@@ -31,7 +31,7 @@ category:
 #### 实现方法
 1. 在golang 解析参数部分添加如下内容:
 
-```golang
+```go
 package main
 
 import "github.com/lpflpf/version"
@@ -51,7 +51,7 @@ func main() {
 
 version 包如下：
 
-```golang
+```go
 package version
 
 import (

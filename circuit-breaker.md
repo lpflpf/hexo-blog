@@ -41,7 +41,7 @@ gobreaker 是在上述状态机的基础上，实现的一个熔断器。
 
 ### 熔断器的定义
 
-```golang
+```go
 type CircuitBreaker struct {
   name          string
   maxRequests   uint32  // 最大请求数 （半开启状态会限流）
@@ -70,7 +70,7 @@ type CircuitBreaker struct {
 
 熔断器的执行操作，主要包括三个阶段；①请求之前的判定；②服务的请求执行；③请求后的状态和计数的更新
 
-```golang
+```go
 
 // 熔断器的调用
 func (cb *CircuitBreaker) Execute(req func() (interface{}, error)) (interface{}, error) {
@@ -103,7 +103,7 @@ func (cb *CircuitBreaker) Execute(req func() (interface{}, error)) (interface{},
 
 请求之前，会判断当前熔断器的状态。如果熔断器以开启，则不会继续请求。如果熔断器半开，并且已达到最大请求阈值，也不会继续请求。
 
-```golang
+```go
 func (cb *CircuitBreaker) beforeRequest() (uint64, error) {
   cb.mutex.Lock()
   defer cb.mutex.Unlock()
@@ -124,7 +124,7 @@ func (cb *CircuitBreaker) beforeRequest() (uint64, error) {
 
 其中当前状态的计算，是依据当前状态来的。如果当前状态为已开启，则判断是否已经超时，超时就可以**变更状态到半开**；如果当前状态为关闭状态，则通过周期判断是否进入下一个周期。
 
-```golang
+```go
 func (cb *CircuitBreaker) currentState(now time.Time) (State, uint64) {
   switch cb.state {
   case StateClosed:
@@ -147,7 +147,7 @@ func (cb *CircuitBreaker) currentState(now time.Time) (State, uint64) {
 
 每次请求之后，会通过请求结果是否成功，对熔断器做计数。
 
-```golang
+```go
 func (cb *CircuitBreaker) afterRequest(before uint64, success bool) {
   cb.mutex.Lock()
   defer cb.mutex.Unlock()

@@ -30,7 +30,7 @@ Golang 作为一个提供了GC的语言，还能有内存泄漏一说？其实�
 
   在 Time 包中：
 
-```golang
+```go
 func After(d Duration) <-chan Time {
     return NewTimer(d).C
 }
@@ -46,7 +46,7 @@ func Tick(d Duration) <-chan Time {
 
   再比如说，在 Http 请求时，会返回 \*http.Response 对象，Http 响应中的Body是http的响应数据，Body 需要每次读取后关闭。那为什么需要关闭呢，我们从 Body 的赋值代码查找结果：
 
-```golang
+```go
 // /src/net/http/transport.go
 
 // http 的持久化链接池，不断取需要做的请求，并做响应
@@ -76,7 +76,7 @@ func newReadWriteCloserBody(br *bufio.Reader, rwc io.ReadWriteCloser) io.ReadWri
 ####  分析goroutine 是否泄漏
 从 pprof 的goroutine 分析，是否 goroutine 在持续增长。如果持续增长，那 goroutine 泄漏没跑了。我们用下面的例子来举例。
 
-```golang
+```go
 package main
 
 import (
@@ -129,7 +129,7 @@ b. 之后访问 ` http://127.0.0.1:8080/debug/pprof/goroutine?debug=1 `查看各
 
 数据泄漏出现的问题就比较多了，比如长的 string，slice 数据用切片的方式被引用，如果切片后的数据不释放，长的string，slice 是不会被释放的, 当然这种泄漏比较小。下面举一个前两天网友提供的一个案例。
 
-```golang
+```go
 package main
 
 import (

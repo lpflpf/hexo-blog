@@ -19,7 +19,7 @@ res="gfedcba"
 
 这个比较简单，只要做前后字符交换就可以了
 
-```golang
+```go
 func reverse(str []byte){
     i := 0
     j := len(str) - 1
@@ -40,7 +40,7 @@ func reverse(str []byte){
 str = "php is the best programing language in the world"
 res = "php si eht tseb gnimargorp egaugnal ni eht dlrow"
 
-```golang
+```go
 func reverse(str string) {
     i := 0
     k := 0
@@ -72,7 +72,7 @@ res = "world the in language programing best the is php"
 
 这个略有难度，但是只需要在第二阶段的接触上加一行代码就可以做到了。
 
-```golang
+```go
 func reverse(str string) {
     i := 0
     k := 0

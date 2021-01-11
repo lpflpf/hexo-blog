@@ -16,7 +16,7 @@
 
 go程序说明
 
-```golang
+```go
     package main    
     // 程序包名, 与 php namespace 类似； 和java 相同    
       

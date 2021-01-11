@@ -34,7 +34,7 @@ socket_mode = 0700                  // 监听模式
 
 通过监听127.0.0.1:9001 端口对 fastcgi 请求做处理。处理流程为：暂停1s，打印处理的进程id。(为了能看到不同进程做了响应，因此对进程暂停1s处理，并打印进程id。)
 
-```golang
+```go
 // fastcgi.go
 package main
 

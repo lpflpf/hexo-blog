@@ -14,7 +14,7 @@ tags:
 
 在golang 中，初始化一个map 算是有两种方式。
 
-```golang
+```go
 example1Map := make(map[int64]string)
 example2Map := make(map[int64]string, 100)
 ```
@@ -25,7 +25,7 @@ example2Map := make(map[int64]string, 100)
 
 对于不同的初始化方式，会使用不同的方式。下面是提供的几种初始化方法：
 
-```golang
+```go
 // hint 就是 make 初始化map 的第二个参数
 func makemap(t *maptype, hint int, h *hmap) *hmap
 func makemap64(t *maptype, hint int64, h *hmap) *hmap
@@ -39,7 +39,7 @@ func makemap_small() *hmap
 
 ### makemap_small
 
-```golang
+```go
 func makemap_small() *hmap {  
   h := new(hmap)
   h.hash0 = fastrand()
@@ -52,7 +52,7 @@ fastrand 是创建一个seed，在生成hash值时使用。
 
 ### makemap64
 
-```golang
+```go
 func makemap64(t *maptype, hint int64, h *hmap) *hmap {
   if int64(int(hint)) != hint {
     hint = 0
@@ -69,7 +69,7 @@ makemap64 是对于传入的第二个参数为int64 的变量使用的。 如果
 
 一开始，我们需要了解下maptype这个结构， maptype 标识一个map 数据类型的定义，当然还有其他的类型，比如说interfacetype，slicetype，chantype 等。maptype 的定义如下：
 
-```golang
+```go
 type maptype struct {
   typ        _type  // type 类型
   key        *_type // key 的type
@@ -86,7 +86,7 @@ maptype 里面存储了kv的对象类型，bucket类型，以及kv占用内存�
 
 下面是 makemap 的代码：
 
-```golang
+```go
 
 // hint 需要创建的 map 大小(预计要添加多少元素)
 func makemap(t *maptype, hint int, h *hmap) *hmap {
@@ -136,7 +136,7 @@ func makemap(t *maptype, hint int, h *hmap) *hmap {
 
 然后，计算B的值. 在overLoadfactor 中，判断了hint 的大小。如果小于等于8，那B就不再赋值，直接不初始化数据。如果B大于8，那就计算B了。这里涉及到一个填充因子的概念。大概意思就是说，每个hash值（也就是pos）中，平均放多少个kv数据，默认是6.5；所以判断标准就是hint 必须满足如下的条件：
 
-```golang
+```go
 hint < 6.5 * (1 << B)
 ```
 
@@ -150,7 +150,7 @@ hint < 6.5 * (1 << B)
 
 makeBucketArray 用于初始化一个Bucket 数组。也就是hmap 中的buckets，下面是相关代码：
 
-```golang
+```go
 func makeBucketArray(t *maptype, b uint8, dirtyalloc unsafe.Pointer) 
 	(buckets unsafe.Pointer, nextOverflow *bmap) {
   base := bucketShift(b)
@@ -186,7 +186,7 @@ func makeBucketArray(t *maptype, b uint8, dirtyalloc unsafe.Pointer)
 - 首先，就是就是通过B计算一个base值，base = 1 << B （2 ^ B)
 nbuckets 是需要申请的数组的长度，正常情况下 base 值就是数组长度。但是，如果 base 大于16时，会预分配一些需要后期做overflow的bucket。这个overflow的计算规则如下：
 
-```golang
+```go
     nbuckets += bucketShift(b - 4)
     sz := t.bucket.size * nbuckets
     up := roundupsize(sz)
@@ -201,7 +201,7 @@ nbuckets 是需要申请的数组的长度，正常情况下 base 值就是数�
 
 - 最后，如果除了需要申请的base 长度的bucket外，还多申请了一些bucket，下面是对多申请的数据做的处理：
 
-```golang
+```go
     // 上面添加了一些nbuckets 防止溢出，所以B 值取模就不太合理了，所以有一个mapextra 的数据节点
     // 数据分配也很有趣，从刚申请的buckets数组中，取出后面的一段分给mapextra
     // nextOverflow 分配给mapextra

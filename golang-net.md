@@ -73,7 +73,7 @@ golang 的 net 包，相关接口和结构比较多，今天做个简单的梳�
 
 下面，我们构造一个简单的 Redis Server （支持多线程），实现了支持Redis协议的简易Key-Value操作（可以使用Redis-cli直接验证）:
 
-```golang
+```go
 package main
 
 import (

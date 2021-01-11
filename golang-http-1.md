@@ -16,7 +16,7 @@ Golong Http 包中，对Http Server 实现的学习和理解。
 
 golang 中， 连接的管理采用的是 Reactor 模式。每个请求到达服务器之后，都会分配一个 goroutine 做任务处理。
 
-```golang
+```go
  func (srv *Server) Serve(l net.Listener) error {
   // ... 初始化和验证listener
   // ... 构造 context
@@ -59,7 +59,7 @@ Server 在Accept 后创建连接（conn)，连接可能有多种状态。通过�
 
 首先，我们看看整体的处理流程：
 
-```golang
+```go
 // Serve a new connection.
 func (c *conn) serve(ctx context.Context) {
   
@@ -125,7 +125,7 @@ func (c *conn) serve(ctx context.Context) {
 
 Response 作为服务的响应节点，比较简单，初始化后，创建一个写缓冲区即可：
 
-```golang
+```go
   w = &response{
     conn:          c,
     cancelCtx:     cancelCtx,
@@ -153,7 +153,7 @@ Http Server 是为了我们的业务处理服务的。在构造了Request 和 Re
 
 在 http Server 中， 构造了 serverHandler 对象完成我们的业务逻辑， serverHandler 中，调用handler.ServerHTTP 方法，我们业务逻辑需要定义一个Handler，handler实现 ServerHTTP 方法即可。
 
-```golang
+```go
 
 type Handler interface {
   ServeHTTP(ResponseWriter, *Request)

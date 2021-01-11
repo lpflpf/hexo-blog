@@ -30,7 +30,7 @@ Golang的map中，首先把kv 分在了N个桶中，每个桶中的数据有8条
 
 下面是定义一个hashmap的结构体：
 
-```golang
+```go
 type hmap struct {
   // 长度
   count     int
@@ -77,7 +77,7 @@ buckets 字段中是存储桶数据的地方。正常会一次申请至少2^N长
 2. **B 这个数是怎么确定的**  这个和我们map中要存放的数据量是有很大关系的。我们在创建map的时候来详述。
 3. **bucket 的偏移是怎么计算的** hash 方法有多个，在 runtime/alg.go 里面定义了。不同的类型用不同的hash算法。算出来是一个uint32的一个hash 码，通过和B取掩码，就找到了bucket的偏移了。下面是取对应bucket的例子：
 
-```golang
+```go
 // 根据key的类型取相应的hash算法
 alg := t.key.alg
 hash := alg.hash(key, uintptr(h.hash0))

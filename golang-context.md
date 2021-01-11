@@ -27,7 +27,7 @@ golang context 包 一开始只是 Google 内部使用的一个 Golang 包，在
 
 context 包中实现了多种 Context 对象。Context 是一个接口，用来描述一个程序的上下文。接口中提供了四个抽象的方法，定义如下：
 
-```golang
+```go
 type Context interface {
   Deadline() (deadline time.Time, ok bool)
   Done() <-chan struct{}
@@ -51,7 +51,7 @@ type Context interface {
 
 Context 提供了两个方法做初始化：
 
-```golang
+```go
 func Background() Context{}
 func TODO() Context {}
 ```
@@ -60,7 +60,7 @@ func TODO() Context {}
 
 其他的 Context 都是基于已经构造好的 Context 来实现的。一个 Context 可以派生多个子 context。基于 Context 派生新Context 的方法如下：
 
-```golang
+```go
 func WithCancel(parent Context) (ctx Context, cancel CancelFunc){}
 func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {}
 func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {}
@@ -70,7 +70,7 @@ func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {}
 
 除了上面的构造方式，还有一类是用来创建传递 traceId， token 等重要数据的 Context。
 
-```golang
+```go
 func WithValue(parent Context, key, val interface{}) Context {}
 ```
 
@@ -92,7 +92,7 @@ withValue 会构造一个新的context，新的context 会包含一对 Key-Value
 
 在做数据库查询时，需要对数据的查询做超时控制，例如：
 
-```golang
+```go
 ctx = context.WithTimeout(context.Background(), time.Second)
 rows, err := pool.QueryContext(ctx, "select * from products where id = ?", 100)
 ```
@@ -101,7 +101,7 @@ rows, err := pool.QueryContext(ctx, "select * from products where id = ?", 100)
 
 在查询时，需要先从pool中获取一个db的链接，代码大概如下：
 
-```golang
+```go
 // src/database/sql/sql.go
 // func (db *DB) conn(ctx context.Context, strategy connReuseStrategy) *driverConn, error)
 
@@ -121,7 +121,7 @@ req 也是一个chan，是等待链接返回的chan，如果Done() 返回的chan
 
 在做SQL Prepare、SQL Query 等操作时，也会有类似方法：
 
-```golang
+```go
 select {
 default:
 // 校验是否已经超时，如果超时直接返回
@@ -142,7 +142,7 @@ return queryer.Query(query, dargs)
 
 下面举一个链路追踪的例子：
 
-```golang
+```go
 // 建议把key 类型不导出，防止被覆盖
 type traceIdKey struct{}{}
 
@@ -197,7 +197,7 @@ Background(), Empty() 均会返回一个空的 Context emptyCtx。emptyCtx 对�
 
 WithCancel 构造的context 是一个cancelCtx实例，代码如下。
 
-```golang
+```go
 type cancelCtx struct {
   Context
 
@@ -213,7 +213,7 @@ type cancelCtx struct {
 
 WithCancel 方法首先会基于 parent 构建一个新的 Context，代码如下：
 
-```golang
+```go
 func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
   c := newCancelCtx(parent)  // 新的上下文
   propagateCancel(parent, &c) // 挂到parent 上
@@ -223,7 +223,7 @@ func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
 
 其中，propagateCancel 方法会判断 parent 是否已经取消，如果取消，则直接调用方法取消；如果没有取消，会在parent的children 追加一个child。这里就可以看出，context 树状结构的实现。 下面是propateCancel 的实现：
 
-```golang
+```go
 // 把child 挂在到parent 下
 func propagateCancel(parent Context, child canceler) {
   // 如果parent 为空，则直接返回
@@ -259,7 +259,7 @@ func propagateCancel(parent Context, child canceler) {
 
 Done() 实现比较简单，就是返回一个chan，等待chan 关闭。可以看出 Done 操作是在调用时才会构造 chan done，done 变量是延时初始化的。
 
-```golang
+```go
 func (c *cancelCtx) Done() <-chan struct{} {
   c.mu.Lock()
   if c.done == nil {
@@ -302,7 +302,7 @@ func (c *cancelCtx) cancel(removeFromParent bool, err error) {
 
 WithDeadline, WithTimeout 提供了实现定时功能的 Context 方法，返回一个timerCtx结构体。WithDeadline 是给定了执行截至时间，WithTimeout 是倒计时时间，WithTImeout 是基于WithDeadline实现的，因此我们仅看其中的WithDeadline 即可。WithDeadline 内部实现是基于cancelCtx 的。相对于 cancelCtx 增加了一个计时器，并记录了 Deadline 时间点。下面是timerCtx 结构体：
 
-```golang
+```go
 type timerCtx struct {
   cancelCtx
   // 计时器
@@ -314,7 +314,7 @@ type timerCtx struct {
 
 WithDeadline 的实现：
 
-```golang
+```go
 func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {
   // 若父上下文结束时间早于child，
   // 则child直接挂载在parent上下文下即可
@@ -353,7 +353,7 @@ func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {
 
 timerCtx 的cancel 操作，和cancelCtx 的cancel 操作是非常类似的。在cancelCtx 的基础上，做了关闭定时器的操作
 
-```golang
+```go
 func (c *timerCtx) cancel(removeFromParent bool, err error) {
   // 调用cancelCtx 的cancel 方法 关闭chan，并通知子context。
   c.cancelCtx.cancel(false, err)
@@ -377,7 +377,7 @@ timeCtx 的 Done 操作直接复用了cancelCtx 的 Done 操作，直接关闭 c
 
 WithValue 构造的上下文与上面几种有区别，其构造的context 原型如下：
 
-```golang
+```go
 type valueCtx struct {
   // 保留了父节点的context
   Context
@@ -387,7 +387,7 @@ type valueCtx struct {
 
 每个context 包含了一个Key-Value组合。valueCtx 保留了父节点的Context，但没有像cancelCtx 一样保留子节点的Context. 下面是valueCtx的构造方法：
 
-```golang
+```go
 func WithValue(parent Context, key, val interface{}) Context {
   if key == nil {
     panic("nil key")
@@ -402,7 +402,7 @@ func WithValue(parent Context, key, val interface{}) Context {
 
 直接将Key-Value赋值给struct 即可完成构造。下面是获取Value 的方法：
 
-```golang
+```go
 func (c *valueCtx) Value(key interface{}) interface{} {
   if c.key == key {
     return c.val

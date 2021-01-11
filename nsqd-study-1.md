@@ -37,7 +37,7 @@ tags:
 
 svc 包使用时，只需要实现 `github.com/judwhite/go-svc/svc.Service` 的接口即可。接口如下:
 
-```golang
+```go
 type Service interface {
 	// Init is called before the program/service is started and after it's
 	// determined if the program is running as a Windows Service.
@@ -65,7 +65,7 @@ type Service interface {
 
 `Exit` 的具体内容为：
 
-```golang
+```go
 func (l *NSQLookupd) Exit() {
 	if l.tcpListener != nil {
 		l.tcpListener.Close()
@@ -105,7 +105,7 @@ func (l *NSQLookupd) Exit() {
 
 ## RegistrationMap 的实现
 
-```golang
+```go
 // RegistrationDB 使用读写锁做读写控制。
 type RegistrationDB struct {
 	sync.RWMutex
@@ -179,7 +179,7 @@ Tcp Listener 是用来监听客户端发来的TCP 消息。
 
 1. 在学习 http 请求时，可以先学习下 `nsq/internal/http_api` 包，此包是对golang 中http请求handler 的一次封装：
 
-```golang
+```go
 
 type Decorator func(APIHandler) APIHandler
 type APIHandler func(http.ResponseWriter, *http.Request, httprouter.Params) (interface{}, error)

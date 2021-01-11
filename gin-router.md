@@ -21,7 +21,7 @@ Gin 的路由功能是基于 `https://github.com/julienschmidt/httprouter` 这�
 
 下面是一个路由的接口定义
 
-```golang
+```go
 type IRoutes interface {
    Use(...HandlerFunc) IRoutes
 
@@ -48,7 +48,7 @@ HandlerFunc 是一个方法类型的定义，我们定义的路由其实就是�
 
 除了上面的定义外，Gin 还有路由组的抽象。
 
-```golang
+```go
 type IRouter interface {
   IRoutes
   Group(string, ...HandlerFunc) *RouterGroup
@@ -67,7 +67,7 @@ type IRouter interface {
 
 首先，我们看下Gin中路由结构的定义。
 
-```golang
+```go
 // gin engine
 type Engine struct {
   RouterGroup
@@ -96,7 +96,7 @@ type RouterGroup struct {
 从定义中可以看出，其实Gin 的 Engine 是复用了 RouterGroup。对于不同的 http method，都通过一个森林来存储路由数据。
 下面是森林上每个节点的定义：
 
-```golang
+```go
 type node struct {
   path      string  // 当前路径
   indices   string  // 对应children 的前缀
@@ -115,7 +115,7 @@ type node struct {
 
 路由的添加，就是将path路径添加到定义的Trie树种，将handlers 添加到对应的node 节点。
 
-```golang
+```go
 func (n *node) addRoute(path string, handlers HandlersChain) {
   // 初始化和维护优先级
 
@@ -148,7 +148,7 @@ func (n *node) addRoute(path string, handlers HandlersChain) {
 
 在服务请求时，路由的责任就是给定一个url请求，拿到节点保存的handlers，以及url中包含的参数值。下面是对一个url 的解析实现。
 
-```golang
+```go
 type nodeValue struct {
 	handlers HandlersChain
 	params   *Params
@@ -184,7 +184,7 @@ walk: // Outer loop for walking the tree
 
 在树中,我们看到的样子如下：
 
-```golang
+```go
   Path
   \
   ├s

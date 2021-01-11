@@ -28,7 +28,7 @@ rpc 是 cs 架构，所以既有客户端，又有服务端。下面，我们先
 
 golang 在rpc 实现中，抽象了协议层，我们可以自定义协议实现我们自己的接口。如下是协议的接口：
 
-```golang
+```go
 // 服务端
 type ServerCodec interface {
   ReadRequestHeader(*Request) error
@@ -54,7 +54,7 @@ type ClientCodec interface {
 
 #### 结构定义
 
-```golang
+```go
 type Server struct {
   serviceMap sync.Map   // 保存Service
   reqLock    sync.Mutex // 读请求的锁
@@ -71,7 +71,7 @@ server端通过互斥锁的方式支持了并发执行。由于每个请求和�
 
 service保存在 Server 的 serviceMap 中，每个Service 的信息如下：
 
-```golang
+```go
 type service struct {
   name   string                 // 服务名
   rcvr   reflect.Value          // 服务对象
@@ -82,7 +82,7 @@ type service struct {
 
 从上面可以看到，一个类型以及该类型的多个方法可以被注册为一个Service。在注册服务时，通过下面的方法将服务保存在serviceMap 中。
 
-```golang
+```go
 // 默认使用对象方法名
 func (server *Server) Register(rcvr interface{}) error {}
 // 指定方法名
@@ -93,7 +93,7 @@ func (server *Server) RegisterName(name string, rcvr interface{}) error {}
 
 首先，是rpc 服务的启动。和大部分的网络应用一致，在accept一个连接后，会启动一个协程做消息处理，代码如下：
 
-```golang
+```go
 for {
   conn, err := lis.Accept()
   if err != nil {
@@ -106,7 +106,7 @@ for {
 
 其次，对于每一个连接，服务端会不断获取请求，并异步发送响应。代码如下：
 
-```golang
+```go
 for {
   // 读取请求
   service, mtype, req, argv, replyv, keepReading, err := server.readRequest(codec)
@@ -133,7 +133,7 @@ for {
 最后，由于异步发送请求，所以请求的顺序和响应顺序不一定一致。所以，在响应报文中，会携带请求报文的seq （序列号），保证消息的一致性。
 除此之外，为了兼容http 服务，`net/rpc` 包还通过http包实现的 Hijack 方式，将 http 协议转换为 rpc 协议。代码如下：
 
-```golang
+```go
 func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
   // 客户端通过 CONNECT 方法连接
 
@@ -162,13 +162,13 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 1. 直接使用 tcp 协议。
 
-    ```golang
+    ```go
     func Dial(network, address string) (*Client, error) {}
     ```
 
 2. 使用 http 协议。 http 协议可以指定路径，或者使用默认的rpc 路径。
 
-    ```golang
+    ```go
     // 默认路径 "/_goRPC_"
     func DialHTTP(network, address string) (*Client, error) {}
     // 使用默认的路径
@@ -179,7 +179,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 RPC 请求的发送，提供了同步和异步的接口调用，方式如下：
 
-```golang
+```go
 // 异步
 func (client *Client) Go(serviceMethod string, args interface{}, reply interface{}, done chan *Call) *Call {}
 // 同步
@@ -190,7 +190,7 @@ func (client *Client) Call(serviceMethod string, args interface{}, reply interfa
 
 下面，我们看内部如何实现请求的发送：
 
-```golang
+```go
 func (client *Client) send(call *Call) {
   // 客户端正常的情况下
   seq := client.seq
@@ -224,7 +224,7 @@ func (client *Client) send(call *Call) {
 
 在rpc 连接成功后，会建立一个连接，专门用于做响应的读取。
 
-```golang
+```go
 for err == nil {
   response = Response{}
   err = client.codec.ReadResponseHeader(&response)
@@ -252,7 +252,7 @@ for err == nil {
 
 ### 服务端
 
-```golang
+```go
 type Args struct {  // 请求参数
   A, B int
 }
@@ -291,7 +291,7 @@ func main() {
 
 ### 客户端
 
-```golang
+```go
 func main() {
   client, err := rpc.DialHTTP("tcp", "127.0.0.1:3000")
   if err != nil {

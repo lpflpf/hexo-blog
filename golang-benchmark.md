@@ -24,7 +24,7 @@ golang 语言在提供了功能测试的基础上，提供了丰富的性能测�
 
 如下为简版快排的代码：
 
-```golang
+```go
 package benchmark
 
 import "sort"
@@ -60,7 +60,7 @@ func myqsort(data []int, s, e int) {
 
 然后编写一个测试的test。
 
-```golang
+```go
 package benchmark
 
 import "testing"

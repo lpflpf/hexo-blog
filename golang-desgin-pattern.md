@@ -20,7 +20,7 @@ tags:
 ### 一个简单栗子
 写过golang的同学一般都会操作数据库，如果要使用 `mysql` 作为数据源，可能代码需要引入 Golang 的一个包数据驱动包，例子如下：
 
-```golang
+```go
 
 import  _ "github.com/go-sql-driver/mysql"
 import  "database/sql"
@@ -39,7 +39,7 @@ func doSomething(){
 首先，我们可以从`database/sql` 包看起，官方包中提供了三个方法，用于获取或者操作驱动：
 要注册一个驱动，需要实现 `database/sql/driver` 包下 Driver 的接口。
 
-```golang
+```go
 
 // 注册驱动
 func Register(name string, driver driver.Driver) {
@@ -78,7 +78,7 @@ func Drivers() []string {
 
 而在MySQL的驱动包中， 选择`github.com/go-sql-driver/mysql@v1.4.1` 包作为例子， driver.go 文件中, 最后有这么一段启动代码：
 
-```golang
+```go
 func init() {
     sql.Register("mysql", &MySQLDriver{})
 }
@@ -98,7 +98,7 @@ Kafka 是一个非常经典的消息队列，Kafka消费者可以按照消费组
 
 其中，分配策略接口定义如下：
 
-```golang
+```go
 type BalanceStrategy interface {
 	// Name uniquely identifies the strategy.
 	Name() string
@@ -113,7 +113,7 @@ type BalanceStrategy interface {
 
 - `BalanceStrategyRange`  
 
-```golang
+```go
 func(plan BalanceStrategyPlan, memberIDs []string, topic string, partitions []int32) {
 	step := float64(len(partitions)) / float64(len(memberIDs))
 
@@ -127,7 +127,7 @@ func(plan BalanceStrategyPlan, memberIDs []string, topic string, partitions []in
 ```
 - `BalanceStrategyRoundRobin`
 
-```golang
+```go
 func(plan BalanceStrategyPlan, memberIDs []string, topic string, partitions []int32) {
 	for i, part := range partitions {
 		memberID := memberIDs[i%len(memberIDs)]

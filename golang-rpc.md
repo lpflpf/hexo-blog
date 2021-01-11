@@ -34,7 +34,7 @@ golang 的RPC框架还是非常丰富的，比如 gRPC，go-zero, go-dubbo 等�
 
 服务端需要实现每一个接口，并把接口绑定到对应的路由上。
 
-```golang
+```go
 package main
 
 import "github.com/lpflpf/rpc"
@@ -53,7 +53,7 @@ func main() {
 
 客户端仅需要定义对应的rpc服务的方法，并通过struct tag的方式指定路由即可
 
-```golang
+```go
 package main
 
 import "fmt"
@@ -86,7 +86,7 @@ func main() {
 服务端主要是将注册路由。在处理请求时，需要将请求的数据转化为注册句柄的参数，并将句柄的处理结果编码，并返回给客户端。代码如下：
 
 
-```golang
+```go
 package rpc
 
 import "net/http"
@@ -162,7 +162,7 @@ func NewRpcServ(addr string) *RpcServ {
 
 RPC 请求的实现，即获取方法调用的各个参数，并编码后发送请求至 server 端，读取请求结果并解码，将解码后的数据填充为函数的返回值。
 
-```golang
+```go
 package rpc
 
 import "io/ioutil"

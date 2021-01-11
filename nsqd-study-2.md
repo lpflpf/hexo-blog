@@ -25,7 +25,7 @@ tags:
 
   BackendQueue 接口如下：
 
-```golang
+```go
 type BackendQueue interface {
     Put([]byte) error      // 将一条消息插入到队列中
     ReadChan() chan []byte // 返回一个无缓冲的chan
@@ -41,7 +41,7 @@ type BackendQueue interface {
 对于需要原子操作的64bit 的字段，需要放在struct 的最前面，原因请看学习总结第一条
 数据结构中定义了 文件的读写位置、一些文件读写的控制变量，以及相关操作的channel.
 
-```golang
+```go
 // diskQueue implements a filesystem backed FIFO queue
 type diskQueue struct {
     // 64bit atomic vars need to be first for proper alignment on 32bit platforms
@@ -95,7 +95,7 @@ type diskQueue struct {
 
 初始化一个队列，需要定义前缀名， 数据路径，每个文件的最大字节数，消息最大最小限制，以及刷盘频次和最长刷盘时间，最后还有一个日志函数
 
-```golang
+```go
 func New(name string, dataPath string, maxBytesPerFile int64,
     minMsgSize int32, maxMsgSize int32,
     syncEvery int64, syncTimeout time.Duration, logf AppLogFunc) Interface {
@@ -164,7 +164,7 @@ ioLoop 函数，做所有时间处理的操作,包括：
 - 清空队列数据
 - 定时刷新的事件
 
-```golang
+```go
 func (d *diskQueue) ioLoop() {
     var dataRead []byte
     var err error
@@ -267,14 +267,14 @@ metadata 数据包含5个字段, 内容如下：
 
 ### 内存对齐与原子操作的问题
 
-  ```golang
+  ```go
   // 64bit atomic vars need to be first for proper alignment on 32bit platforms
   ```
 
 - **现象** nsq 在定义struct 的时候，很多会出现类似的注释
 - **原因** 原因在golang 源码 sync/atomic/doc.go 中
 
-  ```golang
+  ```go
   // On ARM, x86-32, and 32-bit MIPS,
   // it is the caller's responsibility to arrange for 64-bit
   // alignment of 64-bit words accessed atomically. The first word in a
