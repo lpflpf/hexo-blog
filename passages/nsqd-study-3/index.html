@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="lpflpf">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="lpflpf">
+    <meta name="360-site-verification" content="379801d569f5d7aa64d1c06ddc2280bb">
+    
+    <meta name="keywords" content="技术博客,golang,php,性能优化,技术实现,板砖程序员,lpflpf">
+    
+    <meta name="description" content>
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>消息队列 NSQ 源码学习笔记 (三) · 搬砖程序员带你飞</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="stylesheet" href="/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href="/assets/favicon.ico">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js" as="script">
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?208773d8b9c86bb70e16c6915a7bc0fb";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    
+    <!-- 谷歌统计  -->
+    
+
+<script> (function(){ var src = "https://jspassport.ssl.qhimg.com/11.0.1.js?d182b3f28525f2db83acfaaf6e696dba"; document.write('<script src="' + src + '" id="sozz"><\/script>'); })(); </script>
+</head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >搬砖程序员带你飞</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">消息队列 NSQ 源码学习笔记 (三)</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>搬砖程序员带你飞</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:30vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            消息队列 NSQ 源码学习笔记 (三)
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "golang">golang</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "nsq">nsq</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "消息队列">消息队列</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">3k</span>阅读时长: <span class="post-count reading-time">13 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2019/09/06</span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+
+  // callback
+  function fontLoaded() {
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>
+        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <blockquote>
+<p>NSQD 源码学习</p>
+</blockquote>
+<a id="more"></a>
+
+<h1 id="NSQD-学习笔记"><a href="#NSQD-学习笔记" class="headerlink" title="NSQD 学习笔记"></a>NSQD 学习笔记</h1><h2 id="特性总结"><a href="#特性总结" class="headerlink" title="特性总结"></a>特性总结</h2><ul>
+<li>消息投放是不保序的 <ul>
+<li>原因是内存队列、持久化队列、以及重新消费的数据混合在一起消费导致的</li>
+</ul>
+</li>
+<li>多个consumer 订阅同一个channel，消息将随机发送到不同的consumer 上</li>
+<li>消息是可靠的<ul>
+<li>当消息发送出去之后，会进入<code>in_flight_queue</code> 队列</li>
+<li>当恢复FIN 之后，才会从队列中将消费成功的消息清除</li>
+<li>如果客户端发送REQ，消息将会重发</li>
+</ul>
+</li>
+<li>消息发送采用的是推模式，减少延迟</li>
+<li>支持延迟消费的模式: <strong>DPUB</strong>, 或者 <strong>RRQ</strong> (消费未成功，延时消费) 命令</li>
+</ul>
+<h2 id="代码学习"><a href="#代码学习" class="headerlink" title="代码学习"></a>代码学习</h2><h3 id="程序入口"><a href="#程序入口" class="headerlink" title="程序入口"></a>程序入口</h3><p>程序入口 <code>github.com/nsq/apps/nsqd/main.go</code></p>
+<ol>
+<li>获取配置，并从metadata 的持久化文件中读取topic、channel 信息。meta 信息格式:<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+</li>
+</ol>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Topics []<span class="keyword">struct</span> &#123;</span><br><span class="line">    Name     <span class="keyword">string</span> <span class="string">`json:"name"`</span></span><br><span class="line">    Paused   <span class="keyword">bool</span>   <span class="string">`json:"paused"`</span></span><br><span class="line">    Channels []<span class="keyword">struct</span> &#123;</span><br><span class="line">        Name   <span class="keyword">string</span> <span class="string">`json:"name"`</span></span><br><span class="line">        Paused <span class="keyword">bool</span>   <span class="string">`json:"paused"`</span></span><br><span class="line">    &#125; <span class="string">`json:"channels"`</span></span><br><span class="line">&#125; <span class="string">`json:"topics"`</span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>启动nsqd.Main 程序, 端口监听TCP 服务 和 HTTP 服务（支持HTTPS）。</li>
+<li>启动事件循环</li>
+</ol>
+<ul>
+<li><code>queueScanLoop</code> 处理 <code>in-flight</code> 消息 和 <code>deferred</code> 消息队列事件的协程</li>
+<li><code>lookupLoop</code> 处理与 nsqlookup 交互的协程。 包括消息的广播，lookup 节点的更新等。</li>
+<li>如果配置了状态监听的地址，则会启动 <code>statsdLoop</code> 协程，用于定时发送(UDP)当前服务的各类状态</li>
+</ul>
+<h3 id="Topic-处理"><a href="#Topic-处理" class="headerlink" title="Topic 处理"></a>Topic 处理</h3><h4 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h4><p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Topic <span class="keyword">struct</span> &#123;</span><br><span class="line">    <span class="comment">// 64bit atomic vars need to be first for proper alignment on 32bit platforms</span></span><br><span class="line">    messageCount <span class="keyword">uint64</span>    <span class="comment">// 消息数量</span></span><br><span class="line">    messageBytes <span class="keyword">uint64</span>    <span class="comment">// 消息字节数</span></span><br><span class="line"></span><br><span class="line">    sync.RWMutex           <span class="comment">// 结构体读写锁</span></span><br><span class="line"></span><br><span class="line">    name              <span class="keyword">string</span></span><br><span class="line">    channelMap        <span class="keyword">map</span>[<span class="keyword">string</span>]*Channel   <span class="comment">// 保存topic 下所有channel</span></span><br><span class="line">    backend           BackendQueue          <span class="comment">// 落地的消息队列</span></span><br><span class="line">    memoryMsgChan     <span class="keyword">chan</span> *Message         <span class="comment">// 内存中的消息</span></span><br><span class="line">    startChan         <span class="keyword">chan</span> <span class="keyword">int</span>              <span class="comment">// topic 被订阅了，可以启动消费了</span></span><br><span class="line">    exitChan          <span class="keyword">chan</span> <span class="keyword">int</span>              <span class="comment">// 协程退出channel</span></span><br><span class="line">    channelUpdateChan <span class="keyword">chan</span> <span class="keyword">int</span>              <span class="comment">// channel 更新的消息</span></span><br><span class="line">    waitGroup         util.WaitGroupWrapper </span><br><span class="line">    exitFlag          <span class="keyword">int32</span>                 <span class="comment">// 退出标记</span></span><br><span class="line">    idFactory         *guidFactory          <span class="comment">// uuid 生成器</span></span><br><span class="line"></span><br><span class="line">    ephemeral      <span class="keyword">bool</span>                     <span class="comment">// 是否为临时topic</span></span><br><span class="line">    deleteCallback <span class="function"><span class="keyword">func</span><span class="params">(*Topic)</span>             // 临时<span class="title">topic</span>，自动删除相关<span class="title">channel</span></span></span><br><span class="line"><span class="function">    <span class="title">deleter</span>        <span class="title">sync</span>.<span class="title">Once</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">    <span class="title">paused</span>    <span class="title">int32</span></span></span><br><span class="line"><span class="function">    <span class="title">pauseChan</span> <span class="title">chan</span> <span class="title">int</span>                      // 暂停的信号</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">    <span class="title">ctx</span> *<span class="title">context</span>                            // 上下文，保存<span class="title">nsqd</span> </span></span><br><span class="line"><span class="function">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="topic-的创建"><a href="#topic-的创建" class="headerlink" title="topic 的创建"></a>topic 的创建</h4><ul>
+<li>初始化内存队列</li>
+<li>初始化diskqueue</li>
+<li>初始化topic 相应的 msg 唯一id生成器</li>
+<li>向nsqlookup 广播，添加topic信息</li>
+<li>等待事件处理 (consumer 和 channel 相关)<ul>
+<li>只有consumer 存在topic 订阅(Sub)之后，才会启动 Topic 的事件处理</li>
+</ul>
+</li>
+</ul>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> &#123;</span><br><span class="line">    <span class="keyword">select</span> &#123;</span><br><span class="line">    <span class="comment">// 消息可从二者中随机获取，所以topic 中消息是不保序的</span></span><br><span class="line">    <span class="keyword">case</span> msg = &lt;-memoryMsgChan:   <span class="comment">// 内存消息</span></span><br><span class="line">    <span class="keyword">case</span> buf = &lt;-backendChan:     <span class="comment">// 持久化文件中推送的消息</span></span><br><span class="line">        msg, err = decodeMessage(buf)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            t.ctx.nsqd.logf(LOG_ERROR, <span class="string">"failed to decode message - %s"</span>, err)</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line">    <span class="keyword">case</span> &lt;-t.channelUpdateChan:   <span class="comment">// 更新channel，则会增加topic 下发的列表</span></span><br><span class="line">        chans = chans[:<span class="number">0</span>]</span><br><span class="line">        t.RLock()</span><br><span class="line">        <span class="keyword">for</span> _, c := <span class="keyword">range</span> t.channelMap &#123;</span><br><span class="line">            chans = <span class="built_in">append</span>(chans, c)</span><br><span class="line">        &#125;</span><br><span class="line">        t.RUnlock()</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(chans) == <span class="number">0</span> || t.IsPaused() &#123;</span><br><span class="line">            memoryMsgChan = <span class="literal">nil</span></span><br><span class="line">            backendChan = <span class="literal">nil</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            memoryMsgChan = t.memoryMsgChan</span><br><span class="line">            backendChan = t.backend.ReadChan()</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    <span class="keyword">case</span> &lt;-t.pauseChan:           <span class="comment">// 暂停topic，则所有chan 都暂停</span></span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">len</span>(chans) == <span class="number">0</span> || t.IsPaused() &#123;</span><br><span class="line">            memoryMsgChan = <span class="literal">nil</span></span><br><span class="line">            backendChan = <span class="literal">nil</span></span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            memoryMsgChan = t.memoryMsgChan</span><br><span class="line">            backendChan = t.backend.ReadChan()</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    <span class="keyword">case</span> &lt;-t.exitChan:</span><br><span class="line">        <span class="keyword">goto</span> exit</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> i, channel := <span class="keyword">range</span> chans &#123;   <span class="comment">// 将topic 收到的消息广播到 topic 下所有的channel 中</span></span><br><span class="line">        chanMsg := msg</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 考虑比较周全的是，减少一次message 的创建</span></span><br><span class="line">        <span class="keyword">if</span> i &gt; <span class="number">0</span> &#123;                    </span><br><span class="line">            chanMsg = NewMessage(msg.ID, msg.Body)</span><br><span class="line">            chanMsg.Timestamp = msg.Timestamp</span><br><span class="line">            chanMsg.deferred = msg.deferred</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> chanMsg.deferred != <span class="number">0</span> &#123;    <span class="comment">// 如果是defer 的消息，会添加到channel 的defer 队列中</span></span><br><span class="line">            channel.PutMessageDeferred(chanMsg, chanMsg.deferred)</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">        &#125;</span><br><span class="line">        err := channel.PutMessage(chanMsg)  <span class="comment">// 正常消息，直接添加到channel 中</span></span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            t.ctx.nsqd.logf(LOG_ERROR,</span><br><span class="line">                <span class="string">"TOPIC(%s) ERROR: failed to put msg(%s) to channel(%s) - %s"</span>,</span><br><span class="line">                t.name, msg.ID, channel.name, err)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="值得关注的topic-操作"><a href="#值得关注的topic-操作" class="headerlink" title="值得关注的topic 操作"></a>值得关注的topic 操作</h4><ul>
+<li>putMessage</li>
+</ul>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Topic)</span> <span class="title">put</span><span class="params">(m *Message)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">    <span class="keyword">select</span> &#123;</span><br><span class="line">    <span class="keyword">case</span> t.memoryMsgChan &lt;- m:</span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        b := bufferPoolGet()</span><br><span class="line">        err := writeMessageToBackend(b, m, t.backend)</span><br><span class="line">        bufferPoolPut(b)</span><br><span class="line">        t.ctx.nsqd.SetHealth(err)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            t.ctx.nsqd.logf(LOG_ERROR,</span><br><span class="line">                <span class="string">"TOPIC(%s) ERROR: failed to write message to backend - %s"</span>,</span><br><span class="line">                t.name, err)</span><br><span class="line">            <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>  利用了golang chan 阻塞的原理，当 memoryMsgChan 满了之后，<code>case t.memoryMsgChan &lt;- m</code> 无法执行，会执行 <code>default</code> 操作，自动添加消息到硬盘中。</p>
+<ul>
+<li>messageId 的生成，使用了业界常用的snowflake 算法。</li>
+</ul>
+<h3 id="Channel-处理"><a href="#Channel-处理" class="headerlink" title="Channel 处理"></a>Channel 处理</h3><p>channel 没有自己的事件操作，都是通过被动执行相关操作。</p>
+<h4 id="数据结构-1"><a href="#数据结构-1" class="headerlink" title="数据结构"></a>数据结构</h4><p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Channel <span class="keyword">struct</span> &#123;</span><br><span class="line">    <span class="comment">// 64bit atomic vars need to be first for proper alignment on 32bit platforms</span></span><br><span class="line">    requeueCount <span class="keyword">uint64</span>             <span class="comment">// 重新消费的message 个数</span></span><br><span class="line">    messageCount <span class="keyword">uint64</span>             <span class="comment">// 消息总数</span></span><br><span class="line">    timeoutCount <span class="keyword">uint64</span>             <span class="comment">// 消费超时的message 个数</span></span><br><span class="line"></span><br><span class="line">    sync.RWMutex</span><br><span class="line"></span><br><span class="line">    topicName <span class="keyword">string</span></span><br><span class="line">    name      <span class="keyword">string</span></span><br><span class="line">    ctx       *context</span><br><span class="line"></span><br><span class="line">    backend BackendQueue            <span class="comment">// 落地的队列</span></span><br><span class="line"></span><br><span class="line">    memoryMsgChan <span class="keyword">chan</span> *Message     <span class="comment">// 内存中的消息</span></span><br><span class="line">    exitFlag      <span class="keyword">int32</span>             <span class="comment">// 退出标识</span></span><br><span class="line">    exitMutex     sync.RWMutex</span><br><span class="line"></span><br><span class="line">    <span class="comment">// state tracking</span></span><br><span class="line">    clients        <span class="keyword">map</span>[<span class="keyword">int64</span>]Consumer <span class="comment">// 支持多个client 消费，但是一条消息仅能被某一个client 消费</span></span><br><span class="line">    paused         <span class="keyword">int32</span>            <span class="comment">// 暂停标识</span></span><br><span class="line">    ephemeral      <span class="keyword">bool</span>             <span class="comment">// 临时 channel 标识</span></span><br><span class="line">    deleteCallback <span class="function"><span class="keyword">func</span><span class="params">(*Channel)</span>   // 删除的回调函数</span></span><br><span class="line"><span class="function">    <span class="title">deleter</span>        <span class="title">sync</span>.<span class="title">Once</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">    // <span class="title">Stats</span> <span class="title">tracking</span></span></span><br><span class="line"><span class="function">    <span class="title">e2eProcessingLatencyStream</span> *<span class="title">quantile</span>.<span class="title">Quantile</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">    // <span class="title">TODO</span>: <span class="title">these</span> <span class="title">can</span> <span class="title">be</span> <span class="title">DRYd</span> <span class="title">up</span></span></span><br><span class="line"><span class="function">    <span class="title">deferredMessages</span> <span class="title">map</span>[<span class="title">MessageID</span>]*<span class="title">pqueue</span>.<span class="title">Item</span>    // <span class="title">defer</span> 消息保存的<span class="title">map</span></span></span><br><span class="line"><span class="function">    <span class="title">deferredPQ</span>       <span class="title">pqueue</span>.<span class="title">PriorityQueue</span>          // <span class="title">defer</span> 队列 <span class="params">(优先队列保存)</span></span></span><br><span class="line"><span class="function">    <span class="title">deferredMutex</span>    <span class="title">sync</span>.<span class="title">Mutex</span>                    // 相关的互斥锁</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">    <span class="title">inFlightMessages</span> <span class="title">map</span>[<span class="title">MessageID</span>]*<span class="title">Message</span>        // 正在消费的消息保存的<span class="title">map</span></span></span><br><span class="line"><span class="function">    <span class="title">inFlightPQ</span>       <span class="title">inFlightPqueue</span>                // 正在消费的消息保存在优先队列 <span class="params">(优先队列保存)</span></span></span><br><span class="line"><span class="function">    <span class="title">inFlightMutex</span>    <span class="title">sync</span>.<span class="title">Mutex</span>                    // 相关的互斥锁</span></span><br><span class="line"><span class="function">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="事件循环处理"><a href="#事件循环处理" class="headerlink" title="事件循环处理"></a>事件循环处理</h3><p>在启动nsqd 时，会启动一些事件循环的处理。</p>
+<h4 id="channel-队列处理"><a href="#channel-队列处理" class="headerlink" title="channel 队列处理"></a>channel 队列处理</h4><p>  channel 有有两个重要队列： defer队列和inflight 队列, 事件处理主要是对两个队列的消息数据做处理</p>
+<ul>
+<li><strong>扫描channel 规则</strong><ul>
+<li>更新 channels 的频率为100ms</li>
+<li>刷新表的频率为 5s</li>
+<li>默认随机选择20( <strong>queue-scan-selection-count</strong> ) 个channels 做消息队列调整</li>
+<li>默认处理队列的协程数量不超过 4 ( <strong>queue-scan-worker-pool-max</strong> )</li>
+</ul>
+</li>
+<li><strong>processInFlightQueue</strong>  做消息处理超时重发处理<ul>
+<li>flight 队列中，保存的是推送到消费端的消息，优先队列中，按照time排序, 消息已经发送的时间越久越靠前</li>
+<li>定时从flight 队列中获取最久的消息，如果已超时( 超过 <strong>msg–time</strong> )，则将消息<strong>重新发送</strong></li>
+</ul>
+</li>
+<li><strong>processDeferdQueue</strong> 处理延迟队列的消息<ul>
+<li>deferd 队列中，保存的是延迟推送的消息，优先队列中，按照time排序，距离消息要发送的时间越短，越靠前</li>
+<li>定时从deferd 队列中获取最近需要发送的消息，如果消息已达到发送时间，则pop 消息，将消息<strong>发送</strong></li>
+</ul>
+</li>
+</ul>
+<h4 id="lookup-事件响应"><a href="#lookup-事件响应" class="headerlink" title="lookup 事件响应"></a>lookup 事件响应</h4><p>  此处的事件循环，是用于和lookupd 交户使用的事件处理模块。例如Topic 增加或者删除， channel 增加或者删除 需要对所有 nslookupd 模块做消息广播等处理逻辑，均在此处实现。<br>  主要的事件:</p>
+<ul>
+<li><strong>定时心跳操作</strong> 每隔 15s 发送 PING 到 所有 nslookupd 的节点上</li>
+<li><strong>topic,channel新增删除操作</strong> 发送消息到所有 nslookupd 的节点上</li>
+<li><strong>配置修改的操作</strong> 如果配置修改，会重新从配置中刷新一次 nslookupd 节点</li>
+</ul>
+<h3 id="消费协程事件处理"><a href="#消费协程事件处理" class="headerlink" title="消费协程事件处理"></a>消费协程事件处理</h3><p>  当一个客户端与nsqd 通过TCP建立连接后，将启动protocolV2.messagePump 协程，用于处理消息的交户,主协程用于做事件的响应。</p>
+<p>  messagePump:</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(p *protocolV2)</span> <span class="title">messagePump</span><span class="params">(client *clientV2, startedChan <span class="keyword">chan</span> <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">    <span class="keyword">var</span> err error</span><br><span class="line">    <span class="keyword">var</span> memoryMsgChan <span class="keyword">chan</span> *Message</span><br><span class="line">    <span class="keyword">var</span> backendMsgChan <span class="keyword">chan</span> []<span class="keyword">byte</span></span><br><span class="line">    <span class="keyword">var</span> subChannel *Channel</span><br><span class="line">    <span class="keyword">var</span> flusherChan &lt;-<span class="keyword">chan</span> time.Time</span><br><span class="line">    <span class="keyword">var</span> sampleRate <span class="keyword">int32</span></span><br><span class="line"></span><br><span class="line">    subEventChan := client.SubEventChan</span><br><span class="line">    identifyEventChan := client.IdentifyEventChan</span><br><span class="line">    outputBufferTicker := time.NewTicker(client.OutputBufferTimeout)</span><br><span class="line">    heartbeatTicker := time.NewTicker(client.HeartbeatInterval) <span class="comment">// 客户端超时时间的一半， 默认为30s</span></span><br><span class="line">    heartbeatChan := heartbeatTicker.C</span><br><span class="line">    msgTimeout := client.MsgTimeout</span><br><span class="line"></span><br><span class="line">    flushed := <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">close</span>(startedChan)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> subChannel == <span class="literal">nil</span> || !client.IsReadyForMessages() &#123;</span><br><span class="line">            memoryMsgChan = <span class="literal">nil</span></span><br><span class="line">            backendMsgChan = <span class="literal">nil</span></span><br><span class="line">            flusherChan = <span class="literal">nil</span></span><br><span class="line">            client.writeLock.Lock()</span><br><span class="line">            err = client.Flush()</span><br><span class="line">            client.writeLock.Unlock()</span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">goto</span> exit</span><br><span class="line">            &#125;</span><br><span class="line">            flushed = <span class="literal">true</span></span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> flushed &#123;</span><br><span class="line">            memoryMsgChan = subChannel.memoryMsgChan</span><br><span class="line">            backendMsgChan = subChannel.backend.ReadChan()</span><br><span class="line">            flusherChan = <span class="literal">nil</span>                    </span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            memoryMsgChan = subChannel.memoryMsgChan</span><br><span class="line">            backendMsgChan = subChannel.backend.ReadChan()</span><br><span class="line">            flusherChan = outputBufferTicker.C   <span class="comment">// 如果动态设置了flusher 的定时器，则使用这个定时器刷新</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">select</span> &#123;</span><br><span class="line">        <span class="keyword">case</span> &lt;-flusherChan:</span><br><span class="line">            client.writeLock.Lock()</span><br><span class="line">            err = client.Flush()   <span class="comment">// 把writer flush</span></span><br><span class="line">            client.writeLock.Unlock()</span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">goto</span> exit</span><br><span class="line">            &#125;</span><br><span class="line">            flushed = <span class="literal">true</span></span><br><span class="line">        <span class="keyword">case</span> &lt;-client.ReadyStateChan:</span><br><span class="line">        <span class="keyword">case</span> subChannel = &lt;-subEventChan:  <span class="comment">// 一个consumer 同一个tcp 连接，只能订阅一个topic</span></span><br><span class="line">            subEventChan = <span class="literal">nil</span></span><br><span class="line">        <span class="keyword">case</span> identifyData := &lt;-identifyEventChan:  <span class="comment">// 客户端认证</span></span><br><span class="line">            identifyEventChan = <span class="literal">nil</span></span><br><span class="line"></span><br><span class="line">            outputBufferTicker.Stop()</span><br><span class="line">            <span class="keyword">if</span> identifyData.OutputBufferTimeout &gt; <span class="number">0</span> &#123;</span><br><span class="line">                outputBufferTicker = time.NewTicker(identifyData.OutputBufferTimeout)</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            heartbeatTicker.Stop()</span><br><span class="line">            heartbeatChan = <span class="literal">nil</span></span><br><span class="line">            <span class="keyword">if</span> identifyData.HeartbeatInterval &gt; <span class="number">0</span> &#123;   <span class="comment">// 设置刷新时间</span></span><br><span class="line">                heartbeatTicker = time.NewTicker(identifyData.HeartbeatInterval)</span><br><span class="line">                heartbeatChan = heartbeatTicker.C</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> identifyData.SampleRate &gt; <span class="number">0</span> &#123;  <span class="comment">// 可以设置采样数据，采样输出数据</span></span><br><span class="line">                sampleRate = identifyData.SampleRate</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            msgTimeout = identifyData.MsgTimeout   <span class="comment">// identify 可以设置消息的超时事件</span></span><br><span class="line">        <span class="keyword">case</span> &lt;-heartbeatChan:       <span class="comment">// 心跳消息</span></span><br><span class="line">            err = p.Send(client, frameTypeResponse, heartbeatBytes)</span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">goto</span> exit</span><br><span class="line">            &#125;</span><br><span class="line">        <span class="keyword">case</span> b := &lt;-backendMsgChan:  <span class="comment">// 硬盘消息推送到consumer 中</span></span><br><span class="line">            <span class="keyword">if</span> sampleRate &gt; <span class="number">0</span> &amp;&amp; rand.Int31n(<span class="number">100</span>) &gt; sampleRate &#123;</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            msg, err := decodeMessage(b)  <span class="comment">// 硬盘消息保存为二进制，需要解码</span></span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                p.ctx.nsqd.logf(LOG_ERROR, <span class="string">"failed to decode message - %s"</span>, err)</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            &#125;</span><br><span class="line">            msg.Attempts++</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 设置超时事件，并将消息放入flight 队列中</span></span><br><span class="line">            subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)</span><br><span class="line">            client.SendingMessage()</span><br><span class="line">            err = p.SendMessage(client, msg)</span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">goto</span> exit</span><br><span class="line">            &#125;</span><br><span class="line">            flushed = <span class="literal">false</span></span><br><span class="line">        <span class="keyword">case</span> msg := &lt;-memoryMsgChan:   <span class="comment">// 内存消息推送到consumer</span></span><br><span class="line">            <span class="keyword">if</span> sampleRate &gt; <span class="number">0</span> &amp;&amp; rand.Int31n(<span class="number">100</span>) &gt; sampleRate &#123;</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            &#125;</span><br><span class="line">            msg.Attempts++</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 设置超时事件，并将消息放入flight 队列中</span></span><br><span class="line">            subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)</span><br><span class="line">            client.SendingMessage()</span><br><span class="line">            err = p.SendMessage(client, msg)</span><br><span class="line">            <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">                <span class="keyword">goto</span> exit</span><br><span class="line">            &#125;</span><br><span class="line">            flushed = <span class="literal">false</span></span><br><span class="line">        <span class="keyword">case</span> &lt;-client.ExitChan:</span><br><span class="line">            <span class="keyword">goto</span> exit</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">exit:</span><br><span class="line">    p.ctx.nsqd.logf(LOG_INFO, <span class="string">"PROTOCOL(V2): [%s] exiting messagePump"</span>, client)</span><br><span class="line">    heartbeatTicker.Stop()</span><br><span class="line">    outputBufferTicker.Stop()</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        p.ctx.nsqd.logf(LOG_ERROR, <span class="string">"PROTOCOL(V2): [%s] messagePump error - %s"</span>, client, err)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="HTTP-传输协议"><a href="#HTTP-传输协议" class="headerlink" title="HTTP 传输协议"></a>HTTP 传输协议</h3><table>
+<thead>
+<tr>
+<th align="center">METHOD</th>
+<th align="left">ROUTE</th>
+<th align="left">PARAM</th>
+<th align="left">INFO</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">GET</td>
+<td align="left">/ping</td>
+<td align="left">-</td>
+<td align="left">如果服务器正常，返回 OK</td>
+</tr>
+<tr>
+<td align="center">GET</td>
+<td align="left">/info</td>
+<td align="left">-</td>
+<td align="left">返回服务器的相关信息</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/pub</td>
+<td align="left">topicName, [defer]</td>
+<td align="left">消息发布, 可以选择 defer 发布</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/mpub</td>
+<td align="left">topicName, [binary]</td>
+<td align="left">多条消息的发布， 可以支持二进制消息的发布, 消息格式为 (msgNum + (msgSize + msg) * msgNum), 非binary 模式，则按照换行符分割消息</td>
+</tr>
+<tr>
+<td align="center">GET</td>
+<td align="left">/stats</td>
+<td align="left">format, topic, channel, include_clients</td>
+<td align="left">获取响应服务的状态， 可以通过topic, channel 过滤.</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/topic/create</td>
+<td align="left">topic</td>
+<td align="left">创建一个 topic</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/topic/delete</td>
+<td align="left">topic</td>
+<td align="left">删除一个 topic</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/topic/empty</td>
+<td align="left">topic</td>
+<td align="left">清空一个 topic</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/topic/pause</td>
+<td align="left">topic</td>
+<td align="left">暂停一个 topic</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/topic/unpause</td>
+<td align="left">topic</td>
+<td align="left">启动一个暂停的 topic</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/channel/create</td>
+<td align="left">topic, channel</td>
+<td align="left">创建一个 channel</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/channel/delete</td>
+<td align="left">topic, channel</td>
+<td align="left">删除一个 channel</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/channel/empty</td>
+<td align="left">topic, channel</td>
+<td align="left">清空一个channel， 包括 内存中的队列 和 硬盘中的队列</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/channel/pause</td>
+<td align="left">topic, channel</td>
+<td align="left">暂停一个 channel</td>
+</tr>
+<tr>
+<td align="center">POST</td>
+<td align="left">/channel/unpause</td>
+<td align="left">topic, channel</td>
+<td align="left">启动一个暂停的 channel</td>
+</tr>
+<tr>
+<td align="center">PUT</td>
+<td align="left">/config/:opt</td>
+<td align="left">nsqlookupd_tcp_addresses, log_level</td>
+<td align="left">修改 nsqlookupd 的地址，或者 日志级别</td>
+</tr>
+<tr>
+<td align="center">GET/POST</td>
+<td align="left">/debug</td>
+<td align="left">-</td>
+<td align="left">something</td>
+</tr>
+</tbody></table>
+<h3 id="TCP-传输协议"><a href="#TCP-传输协议" class="headerlink" title="TCP 传输协议"></a>TCP 传输协议</h3><table>
+<thead>
+<tr>
+<th align="center">PROTOCAL</th>
+<th align="left">PARAM</th>
+<th align="left">解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">IDENTIFY</td>
+<td align="left">Body (len + data)</td>
+<td align="left">客户端认证, body 采用 json 格式, 主要提供消息消费相关参数信息</td>
+</tr>
+<tr>
+<td align="center">FIN</td>
+<td align="left">msgId</td>
+<td align="left">消息消费完成</td>
+</tr>
+<tr>
+<td align="center">RDY</td>
+<td align="left">size</td>
+<td align="left">若客户端准备好接收消息，将发送RDY 命令，设置消费端可等待的消息量（类似批量消息）。设置为0，则暂停接收</td>
+</tr>
+<tr>
+<td align="center">REQ</td>
+<td align="left">msgId, timeoutMs</td>
+<td align="left">将 in_flight_queue 队列中的消息放到 deferd 队列中，延时消费 （可以认为是消费失败的消息的一种处理方式）</td>
+</tr>
+<tr>
+<td align="center">PUB</td>
+<td align="left">topicName , Body (len + msg)</td>
+<td align="left">消息生产者发布消息到Topic 队列</td>
+</tr>
+<tr>
+<td align="center">MPUB</td>
+<td align="left">TopicName, Body （len + msgNum + (msgSize + msg ) * msgNum</td>
+<td align="left">消息生产着发布多条消息到Topic队列</td>
+</tr>
+<tr>
+<td align="center">DPUB</td>
+<td align="left">TopicNmae, timeoutMs, Body (len + msg)</td>
+<td align="left">消息生产者发布定时消息到Topic 队列</td>
+</tr>
+<tr>
+<td align="center">NOP</td>
+<td align="left">-</td>
+<td align="left">空消息</td>
+</tr>
+<tr>
+<td align="center">TOUCH</td>
+<td align="left">msgId</td>
+<td align="left">重置在 in_flight_queue 队列中的消息的超时时间</td>
+</tr>
+<tr>
+<td align="center">SUB</td>
+<td align="left">topicName, channelName</td>
+<td align="left">消费端通过某个channel订阅某个topic 消息，订阅成功后，将通过 messagePump 推送消息到消费端</td>
+</tr>
+<tr>
+<td align="center">CLS</td>
+<td align="left">-</td>
+<td align="left">消费端暂停接收消息, 等待关闭</td>
+</tr>
+<tr>
+<td align="center">AUTH</td>
+<td align="left">body</td>
+<td align="left">授权</td>
+</tr>
+</tbody></table>
+<h2 id="学习总结"><a href="#学习总结" class="headerlink" title="学习总结"></a>学习总结</h2><ul>
+<li>nsqd 消息id 生成方法采用的uuid 生成算法 snowflake 算法</li>
+<li><code>in_flight_queue</code> 和 <code>delay_queue</code> 实现都是使用堆排序实现的优先队列</li>
+<li>从M 个channel 中随机筛选N个channel 做队列队列扫描, 每次获取的概率相同</li>
+</ul>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">UniqRands</span><span class="params">(quantity <span class="keyword">int</span>, maxval <span class="keyword">int</span>)</span> []<span class="title">int</span></span> &#123;</span><br><span class="line">    <span class="keyword">if</span> maxval &lt; quantity &#123;</span><br><span class="line">        quantity = maxval</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    intSlice := <span class="built_in">make</span>([]<span class="keyword">int</span>, maxval)</span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; maxval; i++ &#123;</span><br><span class="line">        intSlice[i] = i</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 每次从[i, maxval] 中筛选 1 个元素，放到位置 i 中</span></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; quantity; i++ &#123;</span><br><span class="line">        j := rand.Int()%maxval + i</span><br><span class="line">        <span class="comment">// swap</span></span><br><span class="line">        intSlice[i], intSlice[j] = intSlice[j], intSlice[i]</span><br><span class="line">        maxval--</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> intSlice[<span class="number">0</span>:quantity]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+    </article>
+    <!-- license  -->
+    
+        <div class="license-wrapper">
+            <p>原文作者：<a href="http://blog.lpflpf.cn">lpflpf</a>
+            <p>原文链接：<a href="http://blog.lpflpf.cn/passages/nsqd-study-3/">http://blog.lpflpf.cn/passages/nsqd-study-3/</a>
+            <p>发表日期：<a href="http://blog.lpflpf.cn/passages/nsqd-study-3/">2019-09-06 10:44:36</a>
+            <p>更新日期：<a href="http://blog.lpflpf.cn/passages/nsqd-study-3/">2021-01-11 14:41:06</a>
+            <p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+        </div>
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/passages/nsqd-study-4/" title= "消息队列 NSQ 源码学习笔记 (四)">
+                    <div class="nextTitle">消息队列 NSQ 源码学习笔记 (四)</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/passages/nsqd-study-2/" title= "消息队列 NSQ 源码学习笔记 (二)">
+                    <div class="prevTitle">消息队列 NSQ 源码学习笔记 (二)</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<div id="gitalk-container"></div>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script type="text/javascript">
+const gitalk = new Gitalk({
+    clientID: '9387310bb94f8c6bac8c',
+    clientSecret: '061aa504c7120786b907e336fc417c8e0873e26f',
+    id: window.location.pathname,
+    repo: 'hexo-blog',
+    owner: 'lpflpf',
+    admin: ['lpflpf']
+})
+gitalk.render('gitalk-container')
+</script>
+
+    <!-- 评论 -->
+</main>
+
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+            
+                <a href="mailto:lipengfei634626165@163.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/lpflpf" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//segmentfault.com/u/__v__" class="iconfont-archer segmentFault" target="_blank" title=segmentFault></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span> <br/><span ><a style="color:#777" target="_blank" href="http://beian.miit.gov.cn/">京ICP备17037267号</a></span>
+        		 	<div style="width:300px;margin:0 auto">
+		 		<a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010502046463" style="display:inline-block;text-decoration:none;height:20px;line-height:20px;"><img src="/intro/gonganbeian.png" style="float:left;"/><p style="float:left;height:20px;line-height:20px;margin: 0px 0px 0px 5px; color:#939393;">京公网安备 11010502046463号</p></a>
+		 	</div>
+
+    </div>
+ 
+    
+
+</footer>
+
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:30vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#NSQD-学习笔记"><span class="toc-number">1.</span> <span class="toc-text">NSQD 学习笔记</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#特性总结"><span class="toc-number">1.1.</span> <span class="toc-text">特性总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#代码学习"><span class="toc-number">1.2.</span> <span class="toc-text">代码学习</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#程序入口"><span class="toc-number">1.2.1.</span> <span class="toc-text">程序入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Topic-处理"><span class="toc-number">1.2.2.</span> <span class="toc-text">Topic 处理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#数据结构"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">数据结构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#topic-的创建"><span class="toc-number">1.2.2.2.</span> <span class="toc-text">topic 的创建</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#值得关注的topic-操作"><span class="toc-number">1.2.2.3.</span> <span class="toc-text">值得关注的topic 操作</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Channel-处理"><span class="toc-number">1.2.3.</span> <span class="toc-text">Channel 处理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#数据结构-1"><span class="toc-number">1.2.3.1.</span> <span class="toc-text">数据结构</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#事件循环处理"><span class="toc-number">1.2.4.</span> <span class="toc-text">事件循环处理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#channel-队列处理"><span class="toc-number">1.2.4.1.</span> <span class="toc-text">channel 队列处理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#lookup-事件响应"><span class="toc-number">1.2.4.2.</span> <span class="toc-text">lookup 事件响应</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#消费协程事件处理"><span class="toc-number">1.2.5.</span> <span class="toc-text">消费协程事件处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-传输协议"><span class="toc-number">1.2.6.</span> <span class="toc-text">HTTP 传输协议</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TCP-传输协议"><span class="toc-number">1.2.7.</span> <span class="toc-text">TCP 传输协议</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#学习总结"><span class="toc-number">1.3.</span> <span class="toc-text">学习总结</span></a></li></ol></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 53
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2021 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/30</span><a class="archive-post-title" href= "/passages/go-database-query-optimization/" >Golang DB Query 的优化之旅</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/24</span><a class="archive-post-title" href= "/passages/use-unsafe-pointer-dynamic-load-data/" >使用原子操作保证并发安全</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/19</span><a class="archive-post-title" href= "/passages/kafka/" >Kafka 消费并行度提升</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/29</span><a class="archive-post-title" href= "/passages/pika-hash-table/" >Pika Hash 表 知识总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/18</span><a class="archive-post-title" href= "/passages/golang-singleflight-go/" >Golang Singleflight 使用和原理</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/11</span><a class="archive-post-title" href= "/passages/golang-db-scanner-valuer-interface/" >Golang Database 中 Scanner/ Valuer 接口学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/08</span><a class="archive-post-title" href= "/passages/golang-rpc/" >Golang反射学习：手写一个RPC</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/21</span><a class="archive-post-title" href= "/passages/golang-sync-map/" >Golang sync.Map 实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/time-limiter/" >Golang 限流器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/19</span><a class="archive-post-title" href= "/passages/circuit-breaker/" >Golang 熔断器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/gin-router/" >Go Web 框架 Gin 路由的学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/golang-http-2/" >Golang Http 学习（二） Http Client 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/net-rpc/" >Golang Net/rpc 包的学习和使用</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/11</span><a class="archive-post-title" href= "/passages/golang-http-1/" >Golang Http 学习（一） Http Server 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/06</span><a class="archive-post-title" href= "/passages/golang-net/" >Golang Net 包学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/03</span><a class="archive-post-title" href= "/passages/golang-container/" >Golang 容器的学习与实践</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/30</span><a class="archive-post-title" href= "/passages/golang-context/" >Golang Context</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/28</span><a class="archive-post-title" href= "/passages/golang-map-4/" >Golang Map 实现 （四）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/26</span><a class="archive-post-title" href= "/passages/golang-map-3/" >Golang Map 实现（三）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/24</span><a class="archive-post-title" href= "/passages/string-reverse/" >字符串反转的面试题，你会吗</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/23</span><a class="archive-post-title" href= "/passages/golang-map-2/" >Golang Map 实现（二）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/21</span><a class="archive-post-title" href= "/passages/golang-map-1/" >Golang Map实现（一）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/passages/golang-slice/" >Golang-Slice</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/17</span><a class="archive-post-title" href= "/passages/golang-memory-leak/" >Golang 的内存泄漏</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/passages/golang-trace-example/" >Golang Trace 的一个例子</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/14</span><a class="archive-post-title" href= "/passages/golang-trace/" >Golang 性能测试 (3) 跟踪刨析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/11</span><a class="archive-post-title" href= "/passages/golang-profile/" >Golang 性能测试  (2) 性能分析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/09</span><a class="archive-post-title" href= "/passages/golang-benchmark/" >Golang 性能测试 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/08</span><a class="archive-post-title" href= "/passages/blank_space/" >你不知道的空格</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor3/" >Supervisor 的使用和进阶 (3)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor2/" >Supervisor 的使用和进阶 (2)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/03</span><a class="archive-post-title" href= "/passages/supervisor1/" >Supervisor 的使用和进阶 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/02</span><a class="archive-post-title" href= "/passages/python-word-excel/" >Python 操作 Excel 和 Word</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2019 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/04</span><a class="archive-post-title" href= "/passages/golang-desgin-pattern/" >Golang 中的一些设计模式</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/19</span><a class="archive-post-title" href= "/passages/golang-1.13/" >Golang 1.13</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/12</span><a class="archive-post-title" href= "/passages/nsqd-study-5/" >消息队列 NSQ 源码学习笔记 (五)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/10</span><a class="archive-post-title" href= "/passages/nsqd-study-4/" >消息队列 NSQ 源码学习笔记 (四)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/06</span><a class="archive-post-title" href= "/passages/nsqd-study-3/" >消息队列 NSQ 源码学习笔记 (三)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/04</span><a class="archive-post-title" href= "/passages/nsqd-study-2/" >消息队列 NSQ 源码学习笔记 (二)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/02</span><a class="archive-post-title" href= "/passages/nsqd-study-1/" >消息队列 NSQ 源码学习笔记 (一)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/05</span><a class="archive-post-title" href= "/passages/golang-noCopy/" >为什么需要 noCopy</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/27</span><a class="archive-post-title" href= "/passages/golang-json-encoding/" >Json Map 和 Struct 编码对比</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/25</span><a class="archive-post-title" href= "/passages/php-self-increasing/" >Php 自增运算符</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-mod/" >Go Mod</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-binary-compress/" >Go Binary Compress</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-add-build-info-in-binary/" >Golang 二进制文件中添加编译信息</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2018 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/26</span><a class="archive-post-title" href= "/passages/php-ctype/" >由Ctype_digit 引起的一个问题</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/passages/distribuation-id-generator/" >分布式发号器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/15</span><a class="archive-post-title" href= "/passages/golang-basic-structure/" >Go Base Syntax</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/06</span><a class="archive-post-title" href= "/passages/php-cycle-life/" >PHP Cycle Life</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/php-array_merge/" >PHP Array_merge 和 Array + Array 的区别</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/30</span><a class="archive-post-title" href= "/passages/php-singleton/" >PHP Singleton</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/26</span><a class="archive-post-title" href= "/passages/mysql-hint/" >Mysql Hint 学习</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="golang"><span class="iconfont-archer">&#xe606;</span>golang</span>
+    
+        <span class="sidebar-tag-name" data-tags="circuit-breaker"><span class="iconfont-archer">&#xe606;</span>circuit-breaker</span>
+    
+        <span class="sidebar-tag-name" data-tags="id generator"><span class="iconfont-archer">&#xe606;</span>id generator</span>
+    
+        <span class="sidebar-tag-name" data-tags="distribuation"><span class="iconfont-archer">&#xe606;</span>distribuation</span>
+    
+        <span class="sidebar-tag-name" data-tags="gin"><span class="iconfont-archer">&#xe606;</span>gin</span>
+    
+        <span class="sidebar-tag-name" data-tags="http router"><span class="iconfont-archer">&#xe606;</span>http router</span>
+    
+        <span class="sidebar-tag-name" data-tags="database query"><span class="iconfont-archer">&#xe606;</span>database query</span>
+    
+        <span class="sidebar-tag-name" data-tags="go build"><span class="iconfont-archer">&#xe606;</span>go build</span>
+    
+        <span class="sidebar-tag-name" data-tags="base structure"><span class="iconfont-archer">&#xe606;</span>base structure</span>
+    
+        <span class="sidebar-tag-name" data-tags="benchmark"><span class="iconfont-archer">&#xe606;</span>benchmark</span>
+    
+        <span class="sidebar-tag-name" data-tags="container"><span class="iconfont-archer">&#xe606;</span>container</span>
+    
+        <span class="sidebar-tag-name" data-tags="database/sql"><span class="iconfont-archer">&#xe606;</span>database/sql</span>
+    
+        <span class="sidebar-tag-name" data-tags="设计模式"><span class="iconfont-archer">&#xe606;</span>设计模式</span>
+    
+        <span class="sidebar-tag-name" data-tags="http"><span class="iconfont-archer">&#xe606;</span>http</span>
+    
+        <span class="sidebar-tag-name" data-tags="map"><span class="iconfont-archer">&#xe606;</span>map</span>
+    
+        <span class="sidebar-tag-name" data-tags="net"><span class="iconfont-archer">&#xe606;</span>net</span>
+    
+        <span class="sidebar-tag-name" data-tags="noCopy"><span class="iconfont-archer">&#xe606;</span>noCopy</span>
+    
+        <span class="sidebar-tag-name" data-tags="profile"><span class="iconfont-archer">&#xe606;</span>profile</span>
+    
+        <span class="sidebar-tag-name" data-tags="reflect"><span class="iconfont-archer">&#xe606;</span>reflect</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleflight"><span class="iconfont-archer">&#xe606;</span>singleflight</span>
+    
+        <span class="sidebar-tag-name" data-tags="slice"><span class="iconfont-archer">&#xe606;</span>slice</span>
+    
+        <span class="sidebar-tag-name" data-tags="sync"><span class="iconfont-archer">&#xe606;</span>sync</span>
+    
+        <span class="sidebar-tag-name" data-tags="trace"><span class="iconfont-archer">&#xe606;</span>trace</span>
+    
+        <span class="sidebar-tag-name" data-tags="kafka"><span class="iconfont-archer">&#xe606;</span>kafka</span>
+    
+        <span class="sidebar-tag-name" data-tags="Mysql"><span class="iconfont-archer">&#xe606;</span>Mysql</span>
+    
+        <span class="sidebar-tag-name" data-tags="Hint"><span class="iconfont-archer">&#xe606;</span>Hint</span>
+    
+        <span class="sidebar-tag-name" data-tags="net/rpc"><span class="iconfont-archer">&#xe606;</span>net/rpc</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsq"><span class="iconfont-archer">&#xe606;</span>nsq</span>
+    
+        <span class="sidebar-tag-name" data-tags="messageQueue"><span class="iconfont-archer">&#xe606;</span>messageQueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsqlookupd"><span class="iconfont-archer">&#xe606;</span>nsqlookupd</span>
+    
+        <span class="sidebar-tag-name" data-tags="消息队列"><span class="iconfont-archer">&#xe606;</span>消息队列</span>
+    
+        <span class="sidebar-tag-name" data-tags="diskqueue"><span class="iconfont-archer">&#xe606;</span>diskqueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="array_merge"><span class="iconfont-archer">&#xe606;</span>array_merge</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP 开发"><span class="iconfont-archer">&#xe606;</span>PHP 开发</span>
+    
+        <span class="sidebar-tag-name" data-tags="ctype函数簇"><span class="iconfont-archer">&#xe606;</span>ctype函数簇</span>
+    
+        <span class="sidebar-tag-name" data-tags="cycle life"><span class="iconfont-archer">&#xe606;</span>cycle life</span>
+    
+        <span class="sidebar-tag-name" data-tags="Request 处理"><span class="iconfont-archer">&#xe606;</span>Request 处理</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP Source Analysis"><span class="iconfont-archer">&#xe606;</span>PHP Source Analysis</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleton"><span class="iconfont-archer">&#xe606;</span>singleton</span>
+    
+        <span class="sidebar-tag-name" data-tags="serialize / unserialize"><span class="iconfont-archer">&#xe606;</span>serialize / unserialize</span>
+    
+        <span class="sidebar-tag-name" data-tags="clone"><span class="iconfont-archer">&#xe606;</span>clone</span>
+    
+        <span class="sidebar-tag-name" data-tags="pika"><span class="iconfont-archer">&#xe606;</span>pika</span>
+    
+        <span class="sidebar-tag-name" data-tags="cache"><span class="iconfont-archer">&#xe606;</span>cache</span>
+    
+        <span class="sidebar-tag-name" data-tags="Python"><span class="iconfont-archer">&#xe606;</span>Python</span>
+    
+        <span class="sidebar-tag-name" data-tags="Excel"><span class="iconfont-archer">&#xe606;</span>Excel</span>
+    
+        <span class="sidebar-tag-name" data-tags="Word"><span class="iconfont-archer">&#xe606;</span>Word</span>
+    
+        <span class="sidebar-tag-name" data-tags="win32com"><span class="iconfont-archer">&#xe606;</span>win32com</span>
+    
+        <span class="sidebar-tag-name" data-tags="interview"><span class="iconfont-archer">&#xe606;</span>interview</span>
+    
+        <span class="sidebar-tag-name" data-tags="服务管理"><span class="iconfont-archer">&#xe606;</span>服务管理</span>
+    
+        <span class="sidebar-tag-name" data-tags="rate limiter"><span class="iconfont-archer">&#xe606;</span>rate limiter</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="分布式"><span class="iconfont-archer">&#xe60a;</span>分布式</span>
+    
+        <span class="sidebar-category-name" data-categories="golang"><span class="iconfont-archer">&#xe60a;</span>golang</span>
+    
+        <span class="sidebar-category-name" data-categories="golang/php"><span class="iconfont-archer">&#xe60a;</span>golang/php</span>
+    
+        <span class="sidebar-category-name" data-categories="Message-Queue"><span class="iconfont-archer">&#xe60a;</span>Message-Queue</span>
+    
+        <span class="sidebar-category-name" data-categories="mysql"><span class="iconfont-archer">&#xe60a;</span>mysql</span>
+    
+        <span class="sidebar-category-name" data-categories="php"><span class="iconfont-archer">&#xe60a;</span>php</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "lpflpf"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+
+     
+    <script> 
+//        $(document).ready(function(){ 
+//            hljs.highlightAll();
+//        }); 
+    </script>
+    
+</html>
+
+

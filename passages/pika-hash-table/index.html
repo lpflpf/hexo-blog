@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="lpflpf">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="lpflpf">
+    <meta name="360-site-verification" content="379801d569f5d7aa64d1c06ddc2280bb">
+    
+    <meta name="keywords" content="技术博客,golang,php,性能优化,技术实现,板砖程序员,lpflpf">
+    
+    <meta name="description" content>
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Pika Hash 表 知识总结 · 搬砖程序员带你飞</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="stylesheet" href="/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href="/assets/favicon.ico">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js" as="script">
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?208773d8b9c86bb70e16c6915a7bc0fb";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    
+    <!-- 谷歌统计  -->
+    
+
+<script> (function(){ var src = "https://jspassport.ssl.qhimg.com/11.0.1.js?d182b3f28525f2db83acfaaf6e696dba"; document.write('<script src="' + src + '" id="sozz"><\/script>'); })(); </script>
+</head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >搬砖程序员带你飞</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Pika Hash 表 知识总结</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>搬砖程序员带你飞</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:30vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Pika Hash 表 知识总结
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "pika">pika</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "cache">cache</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">2.5k</span>阅读时长: <span class="post-count reading-time">11 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2021/01/29</span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+
+  // callback
+  function fontLoaded() {
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>
+        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>本文主要对 pika 中 Hash 数据结构的使用做一个小结。</p>
+<a id="more"></a>
+
+<blockquote>
+<p><a href="https://github.com/Qihoo360/pika" target="_blank" rel="noopener">Pika</a> 是 360 开源的一个非关系型数据库，可以兼容 Redis 系统的大部分命令。支持主从同步。主要区别是 Pika 支持的数据量不受内存的限制，仅和硬盘大小有关。底层使用了 RocksDB 做 KV 数据的存储。</p>
+</blockquote>
+<p>本文主要对Pika 的 Hash 数据结构做个小结。</p>
+<h2 id="命令支持"><a href="#命令支持" class="headerlink" title="命令支持"></a>命令支持</h2><table>
+<thead>
+<tr>
+<th align="center">接口</th>
+<th align="center">状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">HDEL</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HEXISTS</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HGET</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HGETALL</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HINCRBY</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HINCRBYFLOAT</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HKEYS</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HLEN</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HMGET</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HMSET</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HSET</td>
+<td align="center">暂不支持单条命令设置多个field value，如有需求请用HMSET</td>
+</tr>
+<tr>
+<td align="center">HSETNX</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HVALS</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HSCAN</td>
+<td align="center">支持</td>
+</tr>
+<tr>
+<td align="center">HSTRLEN</td>
+<td align="center">支持</td>
+</tr>
+</tbody></table>
+<h2 id="存储引擎"><a href="#存储引擎" class="headerlink" title="存储引擎"></a>存储引擎</h2><p>由于 Pika 数据最终会进入RocksDB,而RocksDB仅支持K-V数据结构, 因此 需要把两层结构的 Hash 数据转换为一层的KV存储结构。例如，执行如下的命令：</p>
+<p class="code-caption" data-lang data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight q"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">HSET <span class="built_in">key</span> field <span class="built_in">value</span></span><br></pre></td></tr></table></figure>
+
+<p>Pika首先将创建 hash 的 meta k-v 值，用来保存 hash 结构的元数据, 其数据格式如下：</p>
+<p><img src="/passages/pika-hash-table/pika-hash-meta.png" alt></p>
+<p>为了保存 field 和 value 值，将会再创建一个k-v，格式如下：</p>
+<p><img src="/passages/pika-hash-table/pika-hash-kv.png" alt></p>
+<p>后创建的k-v 存储了field 和 value。</p>
+<h2 id="命令操作"><a href="#命令操作" class="headerlink" title="命令操作"></a>命令操作</h2><p>为了更好的了解hash 的操作，下面对几类命令逐个学习：</p>
+<h3 id="创建-更新操作"><a href="#创建-更新操作" class="headerlink" title="创建/更新操作"></a>创建/更新操作</h3><p>例如 Hset 操作：</p>
+<p class="code-caption" data-lang="cpp" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line">Status RedisHashes::HSet(<span class="keyword">const</span> Slice&amp; key, <span class="keyword">const</span> Slice&amp; field,</span><br><span class="line">                         <span class="keyword">const</span> Slice&amp; value, <span class="keyword">int32_t</span>* res) &#123;</span><br><span class="line">  rocksdb::WriteBatch batch;</span><br><span class="line">  <span class="comment">// 此操作需要加锁</span></span><br><span class="line">  <span class="comment">// 函数结束，锁解除</span></span><br><span class="line">  <span class="function">ScopeRecordLock <span class="title">l</span><span class="params">(lock_mgr_, key)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">int32_t</span> version = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">uint32_t</span> statistic = <span class="number">0</span>;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">string</span> meta_value;</span><br><span class="line">  <span class="comment">// 获取meta 数据</span></span><br><span class="line">  Status s = db_-&gt;Get(default_read_options_, handles_[<span class="number">0</span>], key, &amp;meta_value);</span><br><span class="line">  <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">    <span class="function">ParsedHashesMetaValue <span class="title">parsed_hashes_meta_value</span><span class="params">(&amp;meta_value)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (parsed_hashes_meta_value.IsStale()</span><br><span class="line">      || parsed_hashes_meta_value.count() == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// 如果meta 存在，但是没有用到</span></span><br><span class="line">      <span class="comment">// 则直接更新meta &amp; field &amp; value</span></span><br><span class="line">      version = parsed_hashes_meta_value.InitialMetaValue();</span><br><span class="line">      parsed_hashes_meta_value.set_count(<span class="number">1</span>);</span><br><span class="line">      batch.Put(handles_[<span class="number">0</span>], key, meta_value);</span><br><span class="line">      <span class="function">HashesDataKey <span class="title">data_key</span><span class="params">(key, version, field)</span></span>;</span><br><span class="line">      batch.Put(handles_[<span class="number">1</span>], data_key.Encode(), value);</span><br><span class="line">      *res = <span class="number">1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 如果存在，且时间未过期, 版本正确</span></span><br><span class="line">      version = parsed_hashes_meta_value.version();</span><br><span class="line">      <span class="built_in">std</span>::<span class="built_in">string</span> data_value;</span><br><span class="line">      <span class="function">HashesDataKey <span class="title">hashes_data_key</span><span class="params">(key, version, field)</span></span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// 获取field 数据</span></span><br><span class="line">      s = db_-&gt;Get(default_read_options_,</span><br><span class="line">          handles_[<span class="number">1</span>], hashes_data_key.Encode(), &amp;data_value);</span><br><span class="line">      <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">        <span class="comment">// 如果当前存的field 数据正确</span></span><br><span class="line">        *res = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">if</span> (data_value == value.ToString()) &#123; <span class="comment">// 值也相等，则不操作</span></span><br><span class="line">          <span class="keyword">return</span> Status::OK();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          <span class="comment">// 修改kv</span></span><br><span class="line">          batch.Put(handles_[<span class="number">1</span>], hashes_data_key.Encode(), value);</span><br><span class="line">          statistic++;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s.IsNotFound()) &#123;</span><br><span class="line">          <span class="comment">// 如果没有存在kv, 则添加，并更新meta</span></span><br><span class="line">        parsed_hashes_meta_value.ModifyCount(<span class="number">1</span>);</span><br><span class="line">        batch.Put(handles_[<span class="number">0</span>], key, meta_value);</span><br><span class="line">        batch.Put(handles_[<span class="number">1</span>], hashes_data_key.Encode(), value);</span><br><span class="line">        *res = <span class="number">1</span>;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 获取失败</span></span><br><span class="line">        <span class="keyword">return</span> s;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s.IsNotFound()) &#123;</span><br><span class="line">    <span class="comment">// 若meta 未找到, 编码，写入</span></span><br><span class="line">    <span class="keyword">char</span> str[<span class="number">4</span>];</span><br><span class="line">    EncodeFixed32(str, <span class="number">1</span>);</span><br><span class="line">    <span class="function">HashesMetaValue <span class="title">meta_value</span><span class="params">(<span class="built_in">std</span>::<span class="built_in">string</span>(str, <span class="keyword">sizeof</span>(<span class="keyword">int32_t</span>)))</span></span>;</span><br><span class="line">    version = meta_value.UpdateVersion();</span><br><span class="line">    batch.Put(handles_[<span class="number">0</span>], key, meta_value.Encode());</span><br><span class="line">    <span class="function">HashesDataKey <span class="title">data_key</span><span class="params">(key, version, field)</span></span>;</span><br><span class="line">    batch.Put(handles_[<span class="number">1</span>], data_key.Encode(), value);</span><br><span class="line">    *res = <span class="number">1</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> s;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 最后批量写</span></span><br><span class="line">  s = db_-&gt;Write(default_write_options_, &amp;batch);</span><br><span class="line">  <span class="comment">// 更新总的统计信息</span></span><br><span class="line">  UpdateSpecificKeyStatistics(key.ToString(), statistic);</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出，在做 HSet 操作时，会对 metadata 和 field value 同时操作，并需要同时更新，而且由于Pika是多线程服务，需要加锁操作。<strong>在频繁访问同一个hash中的数据时，其锁粒度是一个hash的key，可能会有大量的锁冲突出现</strong>。</p>
+<h3 id="读操作"><a href="#读操作" class="headerlink" title="读操作"></a>读操作</h3><p class="code-caption" data-lang="cpp" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">Status RedisHashes::HGet(<span class="keyword">const</span> Slice&amp; key, <span class="keyword">const</span> Slice&amp; field,</span><br><span class="line">                         <span class="built_in">std</span>::<span class="built_in">string</span>* value) &#123;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">string</span> meta_value;</span><br><span class="line">  <span class="keyword">int32_t</span> version = <span class="number">0</span>;</span><br><span class="line">  rocksdb::ReadOptions read_options;</span><br><span class="line">  <span class="keyword">const</span> rocksdb::Snapshot* snapshot;</span><br><span class="line">  <span class="function">ScopeSnapshot <span class="title">ss</span><span class="params">(db_, &amp;snapshot)</span></span>;</span><br><span class="line">  read_options.snapshot = snapshot;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 获取meta 数据</span></span><br><span class="line">  Status s = db_-&gt;Get(read_options, handles_[<span class="number">0</span>], key, &amp;meta_value);</span><br><span class="line">  <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">    <span class="function">ParsedHashesMetaValue <span class="title">parsed_hashes_meta_value</span><span class="params">(&amp;meta_value)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (parsed_hashes_meta_value.IsStale()) &#123;</span><br><span class="line">    <span class="comment">// 如果存在meta，且生效</span></span><br><span class="line">      <span class="keyword">return</span> Status::NotFound(<span class="string">"Stale"</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (parsed_hashes_meta_value.count() == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> Status::NotFound();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 获取key 值</span></span><br><span class="line">      version = parsed_hashes_meta_value.version();</span><br><span class="line">      <span class="function">HashesDataKey <span class="title">data_key</span><span class="params">(key, version, field)</span></span>;</span><br><span class="line">      s = db_-&gt;Get(read_options, handles_[<span class="number">1</span>], data_key.Encode(), value);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>读操作比较简单，无需加锁。先获取metadata值，再通过metadata 计算出 field 存储key，返回结果即可。</p>
+<h3 id="删除操作"><a href="#删除操作" class="headerlink" title="删除操作"></a>删除操作</h3><p>删除操作有两种，一种是删除整个hash 表(DEL)，一种是删除一个field(HDEL)。首先看下删除整个hash 表的操作。</p>
+<h4 id="DEL"><a href="#DEL" class="headerlink" title="DEL"></a>DEL</h4><p class="code-caption" data-lang="cpp" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">Status RedisHashes::Del(<span class="keyword">const</span> Slice&amp; key) &#123;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">string</span> meta_value;</span><br><span class="line">  <span class="function">ScopeRecordLock <span class="title">l</span><span class="params">(lock_mgr_, key)</span></span>; <span class="comment">// 删除操作需要加锁</span></span><br><span class="line">  Status s = db_-&gt;Get(default_read_options_, handles_[<span class="number">0</span>], key, &amp;meta_value);</span><br><span class="line">  <span class="comment">// 获取 metadata 值</span></span><br><span class="line">  <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">    <span class="function">ParsedHashesMetaValue <span class="title">parsed_hashes_meta_value</span><span class="params">(&amp;meta_value)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (parsed_hashes_meta_value.IsStale()) &#123;</span><br><span class="line">      <span class="comment">// 如果失效了</span></span><br><span class="line">      <span class="keyword">return</span> Status::NotFound(<span class="string">"Stale"</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (parsed_hashes_meta_value.count() == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// 无值</span></span><br><span class="line">      <span class="keyword">return</span> Status::NotFound();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// 更新统计值，更新meta_value 即可。 </span></span><br><span class="line">      <span class="keyword">uint32_t</span> statistic = parsed_hashes_meta_value.count();</span><br><span class="line">      parsed_hashes_meta_value.InitialMetaValue();</span><br><span class="line">      s = db_-&gt;Put(default_write_options_, handles_[<span class="number">0</span>], key, meta_value);</span><br><span class="line">      UpdateSpecificKeyStatistics(key.ToString(), statistic);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里有个需要注意的地方，hash 删表，并不是删除所有数据，只是把meta_value 值更新即可。(修改count值，时间戳，以及version值)<br>由于field的key 是通过metadata 中的版本值计算出来的，由于meta_value 版本更新，所有 field value 均失效。<br><strong>这个是pika 的一个特性，叫秒删功能。顾名思义，可以做到快速删除hash值，由于其删除hash 只重置了meta值，而hash数据结构已经存在的kv在进行compact时进行</strong></p>
+<h4 id="HDEL"><a href="#HDEL" class="headerlink" title="HDEL"></a>HDEL</h4><p>下面是删除一个field 的方法:</p>
+<p class="code-caption" data-lang="cpp" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 从参数可以看出 HDEL 是支持同时删除多个field 的</span></span><br><span class="line">Status RedisHashes::HDel(<span class="keyword">const</span> Slice&amp; key,</span><br><span class="line">                         <span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;<span class="built_in">std</span>::<span class="built_in">string</span>&gt;&amp; fields,</span><br><span class="line">                         <span class="keyword">int32_t</span>* ret) &#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> statistic = <span class="number">0</span>;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;<span class="built_in">std</span>::<span class="built_in">string</span>&gt; filtered_fields;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">unordered_set</span>&lt;<span class="built_in">std</span>::<span class="built_in">string</span>&gt; field_set;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// field 去重</span></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> iter = fields.begin(); iter != fields.end(); ++iter) &#123;</span><br><span class="line">    <span class="built_in">std</span>::<span class="built_in">string</span> field = *iter;</span><br><span class="line">    <span class="keyword">if</span> (field_set.find(field) == field_set.end()) &#123;</span><br><span class="line">      field_set.insert(field);</span><br><span class="line">      filtered_fields.push_back(*iter);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  rocksdb::WriteBatch batch;</span><br><span class="line">  rocksdb::ReadOptions read_options;</span><br><span class="line">  <span class="keyword">const</span> rocksdb::Snapshot* snapshot;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">string</span> meta_value;</span><br><span class="line">  <span class="keyword">int32_t</span> del_cnt = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">int32_t</span> version = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 加锁</span></span><br><span class="line">  <span class="function">ScopeRecordLock <span class="title">l</span><span class="params">(lock_mgr_, key)</span></span>;</span><br><span class="line">  <span class="function">ScopeSnapshot <span class="title">ss</span><span class="params">(db_, &amp;snapshot)</span></span>;</span><br><span class="line">  read_options.snapshot = snapshot;</span><br><span class="line">  Status s = db_-&gt;Get(read_options, handles_[<span class="number">0</span>], key, &amp;meta_value);</span><br><span class="line">  <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">    <span class="function">ParsedHashesMetaValue <span class="title">parsed_hashes_meta_value</span><span class="params">(&amp;meta_value)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (parsed_hashes_meta_value.IsStale()</span><br><span class="line">      || parsed_hashes_meta_value.count() == <span class="number">0</span>) &#123;</span><br><span class="line">      *ret = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">return</span> Status::OK();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="built_in">std</span>::<span class="built_in">string</span> data_value;</span><br><span class="line">      version = parsed_hashes_meta_value.version();</span><br><span class="line">      <span class="comment">// 遍历所有数据，并删除</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">auto</span>&amp; field : filtered_fields) &#123;</span><br><span class="line">        <span class="function">HashesDataKey <span class="title">hashes_data_key</span><span class="params">(key, version, field)</span></span>;</span><br><span class="line">        s = db_-&gt;Get(read_options, handles_[<span class="number">1</span>],</span><br><span class="line">                hashes_data_key.Encode(), &amp;data_value);</span><br><span class="line">        <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">          del_cnt++;</span><br><span class="line">          statistic++;</span><br><span class="line">          batch.Delete(handles_[<span class="number">1</span>], hashes_data_key.Encode());</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s.IsNotFound()) &#123;</span><br><span class="line">          <span class="keyword">continue</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          <span class="keyword">return</span> s;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      *ret = del_cnt;</span><br><span class="line">      parsed_hashes_meta_value.ModifyCount(-del_cnt);</span><br><span class="line">      batch.Put(handles_[<span class="number">0</span>], key, meta_value);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s.IsNotFound()) &#123;</span><br><span class="line">    *ret = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">return</span> Status::OK();</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> s;</span><br><span class="line">  &#125;</span><br><span class="line">  s = db_-&gt;Write(default_write_options_, &amp;batch);</span><br><span class="line">  UpdateSpecificKeyStatistics(key.ToString(), statistic);</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>HDEL 操作支持批量操作。</p>
+<h3 id="数据的清理"><a href="#数据的清理" class="headerlink" title="数据的清理"></a>数据的清理</h3><p>上面提到了，Pika 对于 hash 做了秒删的功能，那秒删之后field中的数据，如何做清理工作呢？<br>经过研究，发现其实pika没有做主动删除的逻辑，只是通过RocksDB 在做compaction（数据压缩）时调用filter 来实现的。<br>RocksDB 的compaction, 主要是为了压缩内存和硬盘的使用空间，提升查找速度(LSM 树便是不断的把树结构做merge，做内存落盘和数据压缩）。在copact操作时，提供了可定制的filter 接口。在pika 中，就是通过实现该接口来做秒删功能的。</p>
+<p class="code-caption" data-lang="cpp" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 针对存储数据的k-v 结构的过滤 （还有一种meta 数据过滤的方法）</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BaseDataFilter</span> :</span> <span class="keyword">public</span> rocksdb::CompactionFilter &#123;</span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  BaseDataFilter(rocksdb::DB* db,</span><br><span class="line">                 <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;rocksdb::ColumnFamilyHandle*&gt;* cf_handles_ptr) :</span><br><span class="line">    db_(db),</span><br><span class="line">    cf_handles_ptr_(cf_handles_ptr),</span><br><span class="line">    cur_key_(<span class="string">""</span>),</span><br><span class="line">    meta_not_found_(<span class="literal">false</span>),</span><br><span class="line">    cur_meta_version_(<span class="number">0</span>),</span><br><span class="line">    cur_meta_timestamp_(<span class="number">0</span>) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">bool</span> <span class="title">Filter</span><span class="params">(<span class="keyword">int</span> level, <span class="keyword">const</span> Slice&amp; key,</span></span></span><br><span class="line"><span class="function"><span class="params">              <span class="keyword">const</span> rocksdb::Slice&amp; value,</span></span></span><br><span class="line"><span class="function"><span class="params">              <span class="built_in">std</span>::<span class="built_in">string</span>* new_value, <span class="keyword">bool</span>* value_changed)</span> <span class="keyword">const</span> override </span>&#123;</span><br><span class="line">    <span class="function">ParsedBaseDataKey <span class="title">parsed_base_data_key</span><span class="params">(key)</span></span>;</span><br><span class="line">    Trace(<span class="string">"==========================START=========================="</span>);</span><br><span class="line">    Trace(<span class="string">"[DataFilter], key: %s, data = %s, version = %d"</span>,</span><br><span class="line">          parsed_base_data_key.key().ToString().c_str(),</span><br><span class="line">          parsed_base_data_key.data().ToString().c_str(),</span><br><span class="line">          parsed_base_data_key.version());</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果是复杂数据结构的key, 两个值不相等，需要取meta中的版本和时间戳</span></span><br><span class="line">    <span class="keyword">if</span> (parsed_base_data_key.key().ToString() != cur_key_) &#123;</span><br><span class="line">      cur_key_ = parsed_base_data_key.key().ToString();</span><br><span class="line">      <span class="built_in">std</span>::<span class="built_in">string</span> meta_value;</span><br><span class="line">      <span class="comment">// destroyed when close the database, Reserve Current key value</span></span><br><span class="line">      <span class="keyword">if</span> (cf_handles_ptr_-&gt;size() == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 基于datakey，算出metakey</span></span><br><span class="line">      <span class="comment">// 查看meta 的状态</span></span><br><span class="line">      Status s = db_-&gt;Get(default_read_options_,</span><br><span class="line">              (*cf_handles_ptr_)[<span class="number">0</span>], cur_key_, &amp;meta_value);</span><br><span class="line">      <span class="keyword">if</span> (s.ok()) &#123;</span><br><span class="line">        meta_not_found_ = <span class="literal">false</span>;</span><br><span class="line">        <span class="function">ParsedBaseMetaValue <span class="title">parsed_base_meta_value</span><span class="params">(&amp;meta_value)</span></span>;</span><br><span class="line">        cur_meta_version_ = parsed_base_meta_value.version();</span><br><span class="line">        cur_meta_timestamp_ = parsed_base_meta_value.timestamp();</span><br><span class="line">      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (s.IsNotFound()) &#123;</span><br><span class="line">        meta_not_found_ = <span class="literal">true</span>;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        cur_key_ = <span class="string">""</span>;</span><br><span class="line">        Trace(<span class="string">"Reserve[Get meta_key faild]"</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (meta_not_found_) &#123;</span><br><span class="line">      Trace(<span class="string">"Drop[Meta key not exist]"</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//判断版本和过期时间</span></span><br><span class="line">    <span class="keyword">int64_t</span> unix_time;</span><br><span class="line">    rocksdb::Env::Default()-&gt;GetCurrentTime(&amp;unix_time);</span><br><span class="line">    <span class="keyword">if</span> (cur_meta_timestamp_ != <span class="number">0</span></span><br><span class="line">      &amp;&amp; cur_meta_timestamp_ &lt; <span class="keyword">static_cast</span>&lt;<span class="keyword">int32_t</span>&gt;(unix_time)) &#123;</span><br><span class="line">      Trace(<span class="string">"Drop[Timeout]"</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (cur_meta_version_ &gt; parsed_base_data_key.version()) &#123;</span><br><span class="line">      Trace(<span class="string">"Drop[data_key_version &lt; cur_meta_version]"</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      Trace(<span class="string">"Reserve[data_key_version == cur_meta_version]"</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">const</span> <span class="keyword">char</span>* <span class="title">Name</span><span class="params">()</span> <span class="keyword">const</span> override </span>&#123; <span class="keyword">return</span> <span class="string">"BaseDataFilter"</span>; &#125;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  rocksdb::DB* db_;</span><br><span class="line">  <span class="built_in">std</span>::<span class="built_in">vector</span>&lt;rocksdb::ColumnFamilyHandle*&gt;* cf_handles_ptr_;</span><br><span class="line">  rocksdb::ReadOptions default_read_options_;</span><br><span class="line">  <span class="keyword">mutable</span> <span class="built_in">std</span>::<span class="built_in">string</span> cur_key_;</span><br><span class="line">  <span class="keyword">mutable</span> <span class="keyword">bool</span> meta_not_found_;</span><br><span class="line">  <span class="keyword">mutable</span> <span class="keyword">int32_t</span> cur_meta_version_;</span><br><span class="line">  <span class="keyword">mutable</span> <span class="keyword">int32_t</span> cur_meta_timestamp_;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>从上述代码中可以看出，其实在pika中，对于大批量的数据(比如list，hash，set 等数据结构)均是具有秒删功能的，使用秒删功能比直接删除一方面可以节省执行时间,另一方面可以减少内存碎片，算是以空间换时间的典型例子了。</p>
+<h3 id="数据扫描"><a href="#数据扫描" class="headerlink" title="数据扫描"></a>数据扫描</h3><p>hash 结构除了需要做kv操作外，还有类似扫描key 的操作(<code>HKEYS</code>, <code>HVALS</code>, <code>HGETALL</code>, <code>HSCAN</code>)。例如 <code>HKEYS</code> 命令会返回所有hash 结构中的 fields. 在 pika 中是如何解决该问题的? 问题的解决需要我们从pika 依赖的RocksDB 中找到答案。</p>
+<p>由于 RocksDB 是 基于 LSM 树实现的存储引擎，其 KEY 是有序的，因此，可以通过 RocksDB 的区间查询操作做数据查询。 对于 <strong>HKEYS</strong>, <strong>HVALS</strong>, <strong>HGETALL</strong> 操作，会扫描 HASH 中的所有值，因此其扫描的数据，是 (keySize + key + version) 为前缀做索引前缀; 对于 HSCAN 则在 (keySize + key + version) 的基础上，增加 HSCAN 提供的前缀信息做前缀搜索即可。</p>
+<h2 id="学习小结"><a href="#学习小结" class="headerlink" title="学习小结"></a>学习小结</h2><ul>
+<li>pika 中，可以存在相同的key 不同存储类型的数据。</li>
+<li>hash 存储值不超过 2^32 , 由于 hash size 存储在 4bytes 的空间中。</li>
+<li>从Hset中，可以看到，在设计数据结构时，尽量减小 hash 中key 值的数量，减少锁meta的时间。</li>
+<li>pika hash 结构具有秒删功能，对于大批量数据的hash 结果，删除操作和正常命令一样会快速执行。（这个和redis有一定区别）</li>
+<li>pika 中异步删除策略是依赖于RocksDB 的compaction 提供的filter 接口实现的。</li>
+<li>令人惊喜的是，也有go版本LSM树的实现。(<a href="https://github.com/couchbase/moss" target="_blank" rel="noopener">moss</a>) </li>
+<li>除了pika外，最近比较火的TiDB的底层存储也是使用的 RocksDB 实现的。</li>
+</ul>
+<blockquote>
+<p>备注：本文源码来自 <a href="https://github.com/Qihoo360/blackwidow" target="_blank" rel="noopener">github.com/Qihoo360/blackwidow</a> 中。</p>
+</blockquote>
+
+    </article>
+    <!-- license  -->
+    
+        <div class="license-wrapper">
+            <p>原文作者：<a href="http://blog.lpflpf.cn">lpflpf</a>
+            <p>原文链接：<a href="http://blog.lpflpf.cn/passages/pika-hash-table/">http://blog.lpflpf.cn/passages/pika-hash-table/</a>
+            <p>发表日期：<a href="http://blog.lpflpf.cn/passages/pika-hash-table/">2021-01-29 13:32:22</a>
+            <p>更新日期：<a href="http://blog.lpflpf.cn/passages/pika-hash-table/">2021-02-04 09:27:38</a>
+            <p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+        </div>
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/passages/kafka/" title= "Kafka 消费并行度提升">
+                    <div class="nextTitle">Kafka 消费并行度提升</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/passages/golang-singleflight-go/" title= "Golang Singleflight 使用和原理">
+                    <div class="prevTitle">Golang Singleflight 使用和原理</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<div id="gitalk-container"></div>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script type="text/javascript">
+const gitalk = new Gitalk({
+    clientID: '9387310bb94f8c6bac8c',
+    clientSecret: '061aa504c7120786b907e336fc417c8e0873e26f',
+    id: window.location.pathname,
+    repo: 'hexo-blog',
+    owner: 'lpflpf',
+    admin: ['lpflpf']
+})
+gitalk.render('gitalk-container')
+</script>
+
+    <!-- 评论 -->
+</main>
+
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+            
+                <a href="mailto:lipengfei634626165@163.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/lpflpf" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//segmentfault.com/u/__v__" class="iconfont-archer segmentFault" target="_blank" title=segmentFault></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span> <br/><span ><a style="color:#777" target="_blank" href="http://beian.miit.gov.cn/">京ICP备17037267号</a></span>
+        		 	<div style="width:300px;margin:0 auto">
+		 		<a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010502046463" style="display:inline-block;text-decoration:none;height:20px;line-height:20px;"><img src="/intro/gonganbeian.png" style="float:left;"/><p style="float:left;height:20px;line-height:20px;margin: 0px 0px 0px 5px; color:#939393;">京公网安备 11010502046463号</p></a>
+		 	</div>
+
+    </div>
+ 
+    
+
+</footer>
+
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:30vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#命令支持"><span class="toc-number">1.</span> <span class="toc-text">命令支持</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#存储引擎"><span class="toc-number">2.</span> <span class="toc-text">存储引擎</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#命令操作"><span class="toc-number">3.</span> <span class="toc-text">命令操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#创建-更新操作"><span class="toc-number">3.1.</span> <span class="toc-text">创建/更新操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#读操作"><span class="toc-number">3.2.</span> <span class="toc-text">读操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除操作"><span class="toc-number">3.3.</span> <span class="toc-text">删除操作</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#DEL"><span class="toc-number">3.3.1.</span> <span class="toc-text">DEL</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#HDEL"><span class="toc-number">3.3.2.</span> <span class="toc-text">HDEL</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#数据的清理"><span class="toc-number">3.4.</span> <span class="toc-text">数据的清理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#数据扫描"><span class="toc-number">3.5.</span> <span class="toc-text">数据扫描</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#学习小结"><span class="toc-number">4.</span> <span class="toc-text">学习小结</span></a></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 53
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2021 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/30</span><a class="archive-post-title" href= "/passages/go-database-query-optimization/" >Golang DB Query 的优化之旅</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/24</span><a class="archive-post-title" href= "/passages/use-unsafe-pointer-dynamic-load-data/" >使用原子操作保证并发安全</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/19</span><a class="archive-post-title" href= "/passages/kafka/" >Kafka 消费并行度提升</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/29</span><a class="archive-post-title" href= "/passages/pika-hash-table/" >Pika Hash 表 知识总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/18</span><a class="archive-post-title" href= "/passages/golang-singleflight-go/" >Golang Singleflight 使用和原理</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/11</span><a class="archive-post-title" href= "/passages/golang-db-scanner-valuer-interface/" >Golang Database 中 Scanner/ Valuer 接口学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/08</span><a class="archive-post-title" href= "/passages/golang-rpc/" >Golang反射学习：手写一个RPC</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/21</span><a class="archive-post-title" href= "/passages/golang-sync-map/" >Golang sync.Map 实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/time-limiter/" >Golang 限流器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/19</span><a class="archive-post-title" href= "/passages/circuit-breaker/" >Golang 熔断器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/gin-router/" >Go Web 框架 Gin 路由的学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/golang-http-2/" >Golang Http 学习（二） Http Client 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/net-rpc/" >Golang Net/rpc 包的学习和使用</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/11</span><a class="archive-post-title" href= "/passages/golang-http-1/" >Golang Http 学习（一） Http Server 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/06</span><a class="archive-post-title" href= "/passages/golang-net/" >Golang Net 包学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/03</span><a class="archive-post-title" href= "/passages/golang-container/" >Golang 容器的学习与实践</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/30</span><a class="archive-post-title" href= "/passages/golang-context/" >Golang Context</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/28</span><a class="archive-post-title" href= "/passages/golang-map-4/" >Golang Map 实现 （四）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/26</span><a class="archive-post-title" href= "/passages/golang-map-3/" >Golang Map 实现（三）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/24</span><a class="archive-post-title" href= "/passages/string-reverse/" >字符串反转的面试题，你会吗</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/23</span><a class="archive-post-title" href= "/passages/golang-map-2/" >Golang Map 实现（二）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/21</span><a class="archive-post-title" href= "/passages/golang-map-1/" >Golang Map实现（一）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/passages/golang-slice/" >Golang-Slice</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/17</span><a class="archive-post-title" href= "/passages/golang-memory-leak/" >Golang 的内存泄漏</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/passages/golang-trace-example/" >Golang Trace 的一个例子</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/14</span><a class="archive-post-title" href= "/passages/golang-trace/" >Golang 性能测试 (3) 跟踪刨析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/11</span><a class="archive-post-title" href= "/passages/golang-profile/" >Golang 性能测试  (2) 性能分析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/09</span><a class="archive-post-title" href= "/passages/golang-benchmark/" >Golang 性能测试 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/08</span><a class="archive-post-title" href= "/passages/blank_space/" >你不知道的空格</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor3/" >Supervisor 的使用和进阶 (3)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor2/" >Supervisor 的使用和进阶 (2)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/03</span><a class="archive-post-title" href= "/passages/supervisor1/" >Supervisor 的使用和进阶 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/02</span><a class="archive-post-title" href= "/passages/python-word-excel/" >Python 操作 Excel 和 Word</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2019 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/04</span><a class="archive-post-title" href= "/passages/golang-desgin-pattern/" >Golang 中的一些设计模式</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/19</span><a class="archive-post-title" href= "/passages/golang-1.13/" >Golang 1.13</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/12</span><a class="archive-post-title" href= "/passages/nsqd-study-5/" >消息队列 NSQ 源码学习笔记 (五)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/10</span><a class="archive-post-title" href= "/passages/nsqd-study-4/" >消息队列 NSQ 源码学习笔记 (四)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/06</span><a class="archive-post-title" href= "/passages/nsqd-study-3/" >消息队列 NSQ 源码学习笔记 (三)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/04</span><a class="archive-post-title" href= "/passages/nsqd-study-2/" >消息队列 NSQ 源码学习笔记 (二)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/02</span><a class="archive-post-title" href= "/passages/nsqd-study-1/" >消息队列 NSQ 源码学习笔记 (一)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/05</span><a class="archive-post-title" href= "/passages/golang-noCopy/" >为什么需要 noCopy</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/27</span><a class="archive-post-title" href= "/passages/golang-json-encoding/" >Json Map 和 Struct 编码对比</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/25</span><a class="archive-post-title" href= "/passages/php-self-increasing/" >Php 自增运算符</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-mod/" >Go Mod</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-binary-compress/" >Go Binary Compress</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-add-build-info-in-binary/" >Golang 二进制文件中添加编译信息</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2018 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/26</span><a class="archive-post-title" href= "/passages/php-ctype/" >由Ctype_digit 引起的一个问题</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/passages/distribuation-id-generator/" >分布式发号器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/15</span><a class="archive-post-title" href= "/passages/golang-basic-structure/" >Go Base Syntax</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/06</span><a class="archive-post-title" href= "/passages/php-cycle-life/" >PHP Cycle Life</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/php-array_merge/" >PHP Array_merge 和 Array + Array 的区别</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/30</span><a class="archive-post-title" href= "/passages/php-singleton/" >PHP Singleton</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/26</span><a class="archive-post-title" href= "/passages/mysql-hint/" >Mysql Hint 学习</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="golang"><span class="iconfont-archer">&#xe606;</span>golang</span>
+    
+        <span class="sidebar-tag-name" data-tags="circuit-breaker"><span class="iconfont-archer">&#xe606;</span>circuit-breaker</span>
+    
+        <span class="sidebar-tag-name" data-tags="id generator"><span class="iconfont-archer">&#xe606;</span>id generator</span>
+    
+        <span class="sidebar-tag-name" data-tags="distribuation"><span class="iconfont-archer">&#xe606;</span>distribuation</span>
+    
+        <span class="sidebar-tag-name" data-tags="gin"><span class="iconfont-archer">&#xe606;</span>gin</span>
+    
+        <span class="sidebar-tag-name" data-tags="http router"><span class="iconfont-archer">&#xe606;</span>http router</span>
+    
+        <span class="sidebar-tag-name" data-tags="database query"><span class="iconfont-archer">&#xe606;</span>database query</span>
+    
+        <span class="sidebar-tag-name" data-tags="go build"><span class="iconfont-archer">&#xe606;</span>go build</span>
+    
+        <span class="sidebar-tag-name" data-tags="base structure"><span class="iconfont-archer">&#xe606;</span>base structure</span>
+    
+        <span class="sidebar-tag-name" data-tags="benchmark"><span class="iconfont-archer">&#xe606;</span>benchmark</span>
+    
+        <span class="sidebar-tag-name" data-tags="container"><span class="iconfont-archer">&#xe606;</span>container</span>
+    
+        <span class="sidebar-tag-name" data-tags="database/sql"><span class="iconfont-archer">&#xe606;</span>database/sql</span>
+    
+        <span class="sidebar-tag-name" data-tags="设计模式"><span class="iconfont-archer">&#xe606;</span>设计模式</span>
+    
+        <span class="sidebar-tag-name" data-tags="http"><span class="iconfont-archer">&#xe606;</span>http</span>
+    
+        <span class="sidebar-tag-name" data-tags="map"><span class="iconfont-archer">&#xe606;</span>map</span>
+    
+        <span class="sidebar-tag-name" data-tags="net"><span class="iconfont-archer">&#xe606;</span>net</span>
+    
+        <span class="sidebar-tag-name" data-tags="noCopy"><span class="iconfont-archer">&#xe606;</span>noCopy</span>
+    
+        <span class="sidebar-tag-name" data-tags="profile"><span class="iconfont-archer">&#xe606;</span>profile</span>
+    
+        <span class="sidebar-tag-name" data-tags="reflect"><span class="iconfont-archer">&#xe606;</span>reflect</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleflight"><span class="iconfont-archer">&#xe606;</span>singleflight</span>
+    
+        <span class="sidebar-tag-name" data-tags="slice"><span class="iconfont-archer">&#xe606;</span>slice</span>
+    
+        <span class="sidebar-tag-name" data-tags="sync"><span class="iconfont-archer">&#xe606;</span>sync</span>
+    
+        <span class="sidebar-tag-name" data-tags="trace"><span class="iconfont-archer">&#xe606;</span>trace</span>
+    
+        <span class="sidebar-tag-name" data-tags="kafka"><span class="iconfont-archer">&#xe606;</span>kafka</span>
+    
+        <span class="sidebar-tag-name" data-tags="Mysql"><span class="iconfont-archer">&#xe606;</span>Mysql</span>
+    
+        <span class="sidebar-tag-name" data-tags="Hint"><span class="iconfont-archer">&#xe606;</span>Hint</span>
+    
+        <span class="sidebar-tag-name" data-tags="net/rpc"><span class="iconfont-archer">&#xe606;</span>net/rpc</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsq"><span class="iconfont-archer">&#xe606;</span>nsq</span>
+    
+        <span class="sidebar-tag-name" data-tags="messageQueue"><span class="iconfont-archer">&#xe606;</span>messageQueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsqlookupd"><span class="iconfont-archer">&#xe606;</span>nsqlookupd</span>
+    
+        <span class="sidebar-tag-name" data-tags="消息队列"><span class="iconfont-archer">&#xe606;</span>消息队列</span>
+    
+        <span class="sidebar-tag-name" data-tags="diskqueue"><span class="iconfont-archer">&#xe606;</span>diskqueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="array_merge"><span class="iconfont-archer">&#xe606;</span>array_merge</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP 开发"><span class="iconfont-archer">&#xe606;</span>PHP 开发</span>
+    
+        <span class="sidebar-tag-name" data-tags="ctype函数簇"><span class="iconfont-archer">&#xe606;</span>ctype函数簇</span>
+    
+        <span class="sidebar-tag-name" data-tags="cycle life"><span class="iconfont-archer">&#xe606;</span>cycle life</span>
+    
+        <span class="sidebar-tag-name" data-tags="Request 处理"><span class="iconfont-archer">&#xe606;</span>Request 处理</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP Source Analysis"><span class="iconfont-archer">&#xe606;</span>PHP Source Analysis</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleton"><span class="iconfont-archer">&#xe606;</span>singleton</span>
+    
+        <span class="sidebar-tag-name" data-tags="serialize / unserialize"><span class="iconfont-archer">&#xe606;</span>serialize / unserialize</span>
+    
+        <span class="sidebar-tag-name" data-tags="clone"><span class="iconfont-archer">&#xe606;</span>clone</span>
+    
+        <span class="sidebar-tag-name" data-tags="pika"><span class="iconfont-archer">&#xe606;</span>pika</span>
+    
+        <span class="sidebar-tag-name" data-tags="cache"><span class="iconfont-archer">&#xe606;</span>cache</span>
+    
+        <span class="sidebar-tag-name" data-tags="Python"><span class="iconfont-archer">&#xe606;</span>Python</span>
+    
+        <span class="sidebar-tag-name" data-tags="Excel"><span class="iconfont-archer">&#xe606;</span>Excel</span>
+    
+        <span class="sidebar-tag-name" data-tags="Word"><span class="iconfont-archer">&#xe606;</span>Word</span>
+    
+        <span class="sidebar-tag-name" data-tags="win32com"><span class="iconfont-archer">&#xe606;</span>win32com</span>
+    
+        <span class="sidebar-tag-name" data-tags="interview"><span class="iconfont-archer">&#xe606;</span>interview</span>
+    
+        <span class="sidebar-tag-name" data-tags="服务管理"><span class="iconfont-archer">&#xe606;</span>服务管理</span>
+    
+        <span class="sidebar-tag-name" data-tags="rate limiter"><span class="iconfont-archer">&#xe606;</span>rate limiter</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="分布式"><span class="iconfont-archer">&#xe60a;</span>分布式</span>
+    
+        <span class="sidebar-category-name" data-categories="golang"><span class="iconfont-archer">&#xe60a;</span>golang</span>
+    
+        <span class="sidebar-category-name" data-categories="golang/php"><span class="iconfont-archer">&#xe60a;</span>golang/php</span>
+    
+        <span class="sidebar-category-name" data-categories="Message-Queue"><span class="iconfont-archer">&#xe60a;</span>Message-Queue</span>
+    
+        <span class="sidebar-category-name" data-categories="mysql"><span class="iconfont-archer">&#xe60a;</span>mysql</span>
+    
+        <span class="sidebar-category-name" data-categories="php"><span class="iconfont-archer">&#xe60a;</span>php</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "lpflpf"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+
+     
+    <script> 
+//        $(document).ready(function(){ 
+//            hljs.highlightAll();
+//        }); 
+    </script>
+    
+</html>
+
+

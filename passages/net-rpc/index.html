@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="">
+    <!-- title -->
+
+
+
+
+<!-- keywords -->
+
+
+
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="author" content="lpflpf">
+    <meta name="renderer" content="webkit">
+    <meta name="copyright" content="lpflpf">
+    <meta name="360-site-verification" content="379801d569f5d7aa64d1c06ddc2280bb">
+    
+    <meta name="keywords" content="技术博客,golang,php,性能优化,技术实现,板砖程序员,lpflpf">
+    
+    <meta name="description" content>
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>Golang Net/rpc 包的学习和使用 · 搬砖程序员带你飞</title>
+    <style type="text/css">
+    @font-face {
+        font-family: 'Oswald-Regular';
+        src: url("/font/Oswald-Regular.ttf");
+    }
+
+    body {
+        margin: 0;
+    }
+
+    header,
+    footer,
+    .back-top,
+    .sidebar,
+    .container,
+    .site-intro-meta,
+    .toc-wrapper {
+        display: none;
+    }
+
+    .site-intro {
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        /* height: 50vh; */
+        overflow: hidden;
+    }
+
+    .site-intro-placeholder {
+        position: absolute;
+        z-index: -2;
+        top: 0;
+        left: 0;
+        width: calc(100% + 300px);
+        height: 100%;
+        background: repeating-linear-gradient(-45deg, #444 0, #444 80px, #333 80px, #333 160px);
+        background-position: center center;
+        transform: translate3d(-226px, 0, 0);
+        animation: gradient-move 2.5s ease-out 0s infinite;
+    }
+
+    @keyframes gradient-move {
+        0% {
+            transform: translate3d(-226px, 0, 0);
+        }
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+</style>
+
+    <link rel="preload" href="/css/style.css?v=20180824" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="stylesheet" href="/css/mobile.css?v=20180824" media="(max-width: 980px)">
+    
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    
+    <!-- /*! loadCSS. [c]2017 Filament Group, Inc. MIT License */
+/* This file is meant as a standalone workflow for
+- testing support for link[rel=preload]
+- enabling async CSS loading in browsers that do not support rel=preload
+- applying rel preload css once loaded, whether supported or not.
+*/ -->
+<script>
+(function( w ){
+	"use strict";
+	// rel=preload support test
+	if( !w.loadCSS ){
+		w.loadCSS = function(){};
+	}
+	// define on the loadCSS obj
+	var rp = loadCSS.relpreload = {};
+	// rel=preload feature support test
+	// runs once and returns a function for compat purposes
+	rp.support = (function(){
+		var ret;
+		try {
+			ret = w.document.createElement( "link" ).relList.supports( "preload" );
+		} catch (e) {
+			ret = false;
+		}
+		return function(){
+			return ret;
+		};
+	})();
+
+	// if preload isn't supported, get an asynchronous load by using a non-matching media attribute
+	// then change that media back to its intended value on load
+	rp.bindMediaToggle = function( link ){
+		// remember existing media attr for ultimate state, or default to 'all'
+		var finalMedia = link.media || "all";
+
+		function enableStylesheet(){
+			link.media = finalMedia;
+		}
+
+		// bind load handlers to enable media
+		if( link.addEventListener ){
+			link.addEventListener( "load", enableStylesheet );
+		} else if( link.attachEvent ){
+			link.attachEvent( "onload", enableStylesheet );
+		}
+
+		// Set rel and non-applicable media type to start an async request
+		// note: timeout allows this to happen async to let rendering continue in IE
+		setTimeout(function(){
+			link.rel = "stylesheet";
+			link.media = "only x";
+		});
+		// also enable media after 3 seconds,
+		// which will catch very old browsers (android 2.x, old firefox) that don't support onload on link
+		setTimeout( enableStylesheet, 3000 );
+	};
+
+	// loop through link elements in DOM
+	rp.poly = function(){
+		// double check this to prevent external calls from running
+		if( rp.support() ){
+			return;
+		}
+		var links = w.document.getElementsByTagName( "link" );
+		for( var i = 0; i < links.length; i++ ){
+			var link = links[ i ];
+			// qualify links to those with rel=preload and as=style attrs
+			if( link.rel === "preload" && link.getAttribute( "as" ) === "style" && !link.getAttribute( "data-loadcss" ) ){
+				// prevent rerunning on link
+				link.setAttribute( "data-loadcss", true );
+				// bind listeners to toggle media back
+				rp.bindMediaToggle( link );
+			}
+		}
+	};
+
+	// if unsupported, run the polyfill
+	if( !rp.support() ){
+		// run once at least
+		rp.poly();
+
+		// rerun poly on an interval until onload
+		var run = w.setInterval( rp.poly, 500 );
+		if( w.addEventListener ){
+			w.addEventListener( "load", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		} else if( w.attachEvent ){
+			w.attachEvent( "onload", function(){
+				rp.poly();
+				w.clearInterval( run );
+			} );
+		}
+	}
+
+
+	// commonjs
+	if( typeof exports !== "undefined" ){
+		exports.loadCSS = loadCSS;
+	}
+	else {
+		w.loadCSS = loadCSS;
+	}
+}( typeof global !== "undefined" ? global : this ) );
+</script>
+
+    <link rel="icon" href="/assets/favicon.ico">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js" as="script">
+    <link rel="preload" href="/scripts/main.js" as="script">
+    <link rel="preload" as="font" href="/font/Oswald-Regular.ttf" crossorigin>
+    <link rel="preload" as="font" href="https://at.alicdn.com/t/font_327081_1dta1rlogw17zaor.woff" crossorigin>
+    
+    <!-- fancybox -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" defer></script>
+    <!-- 百度统计  -->
+    
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+        var hm = document.createElement("script");
+        hm.src = "https://hm.baidu.com/hm.js?208773d8b9c86bb70e16c6915a7bc0fb";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+    
+    <!-- 谷歌统计  -->
+    
+
+<script> (function(){ var src = "https://jspassport.ssl.qhimg.com/11.0.1.js?d182b3f28525f2db83acfaaf6e696dba"; document.write('<script src="' + src + '" id="sozz"><\/script>'); })(); </script>
+</head>
+
+    
+        <body class="post-body">
+    
+    
+<header class="header">
+
+    <div class="read-progress"></div>
+    <div class="header-sidebar-menu">&#xe775;</div>
+    <!-- post页的toggle banner  -->
+    
+    <div class="banner">
+            <div class="blog-title">
+                <a href="/" >搬砖程序员带你飞</a>
+            </div>
+            <div class="post-title">
+                <a href="#" class="post-name">Golang Net/rpc 包的学习和使用</a>
+            </div>
+    </div>
+    
+    <a class="home-link" href=/>搬砖程序员带你飞</a>
+</header>
+    <div class="wrapper">
+        <div class="site-intro" style="
+
+
+
+
+
+
+
+height:30vh;
+">
+    
+    <!-- 主页  -->
+    
+    
+    <!-- 404页  -->
+            
+    <div class="site-intro-placeholder"></div>
+    <div class="site-intro-img" style="background-image: url(/intro/post-bg.jpg)"></div>
+    <div class="site-intro-meta">
+        <!-- 标题  -->
+        <h1 class="intro-title">
+            <!-- 主页  -->
+            
+            Golang Net/rpc 包的学习和使用
+            <!-- 404 -->
+            
+        </h1>
+        <!-- 副标题 -->
+        <p class="intro-subtitle">
+            <!-- 主页副标题  -->
+            
+            
+            <!-- 404 -->
+            
+        </p>
+        <!-- 文章页meta -->
+        
+            <div class="post-intros">
+                <!-- 文章页标签  -->
+                
+                    <div class= post-intro-tags >
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "golang">golang</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags = "net/rpc">net/rpc</a>
+    
+</div>
+                
+                
+                    <div class="post-intro-read">
+                        <span>字数统计: <span class="post-count word-count">2.2k</span>阅读时长: <span class="post-count reading-time">9 min</span></span>
+                    </div>
+                
+                <div class="post-intro-meta">
+                    <span class="post-intro-calander iconfont-archer">&#xe676;</span>
+                    <span class="post-intro-time">2020/06/01</span>
+                    
+                    <span class="shareWrapper">
+                        <span class="iconfont-archer shareIcon">&#xe71d;</span>
+                        <span class="shareText">Share</span>
+                        <ul class="shareList">
+                            <li class="iconfont-archer share-qr" data-type="qr">&#xe75b;
+                                <div class="share-qrcode"></div>
+                            </li>
+                            <li class="iconfont-archer" data-type="weibo">&#xe619;</li>
+                            <li class="iconfont-archer" data-type="qzone">&#xe62e;</li>
+                            <li class="iconfont-archer" data-type="twitter">&#xe634;</li>
+                            <li class="iconfont-archer" data-type="facebook">&#xe67a;</li>
+                        </ul>
+                    </span>
+                </div>
+            </div>
+        
+    </div>
+</div>
+        <script>
+ 
+  // get user agent
+  var browser = {
+    versions: function () {
+      var u = window.navigator.userAgent;
+      return {
+        userAgent: u,
+        trident: u.indexOf('Trident') > -1, //IE内核
+        presto: u.indexOf('Presto') > -1, //opera内核
+        webKit: u.indexOf('AppleWebKit') > -1, //苹果、谷歌内核
+        gecko: u.indexOf('Gecko') > -1 && u.indexOf('KHTML') == -1, //火狐内核
+        mobile: !!u.match(/AppleWebKit.*Mobile.*/), //是否为移动终端
+        ios: !!u.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/), //ios终端
+        android: u.indexOf('Android') > -1 || u.indexOf('Linux') > -1, //android终端或者uc浏览器
+        iPhone: u.indexOf('iPhone') > -1 || u.indexOf('Mac') > -1, //是否为iPhone或者安卓QQ浏览器
+        iPad: u.indexOf('iPad') > -1, //是否为iPad
+        webApp: u.indexOf('Safari') == -1, //是否为web应用程序，没有头部与底部
+        weixin: u.indexOf('MicroMessenger') == -1, //是否为微信浏览器
+        uc: u.indexOf('UCBrowser') > -1 //是否为android下的UC浏览器
+      };
+    }()
+  }
+
+  // callback
+  function fontLoaded() {
+    if (document.getElementsByClassName('site-intro-meta')) {
+      document.getElementsByClassName('intro-title')[0].classList.add('intro-fade-in');
+      document.getElementsByClassName('intro-subtitle')[0].classList.add('intro-fade-in');
+      var postIntros = document.getElementsByClassName('post-intros')[0]
+      if (postIntros) {
+        postIntros.classList.add('post-fade-in');
+      }
+    }
+  }
+
+  // UC不支持跨域，所以直接显示
+  function asyncCb(){
+    if (browser.versions.uc) {
+      console.log("UCBrowser");
+      fontLoaded();
+    } else {
+      WebFont.load({
+        custom: {
+          families: ['Oswald-Regular']
+        },
+        loading: function () {  //所有字体开始加载
+          // console.log('loading');
+        },
+        active: function () {  //所有字体已渲染
+          fontLoaded();
+        },
+        inactive: function () { //字体预加载失败，无效字体或浏览器不支持加载
+          console.log('inactive: timeout');
+          fontLoaded();
+        },
+        timeout: 5000 // Set the timeout to two seconds
+      });
+    }
+  }
+
+  function asyncErr(){
+    console.warn('script load from CDN failed, will load local script')
+  }
+
+  // load webfont-loader async, and add callback function
+  function async(u, cb, err) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (cb) { o.addEventListener('load', function (e) { cb(null, e); }, false); }
+    if (err) { o.addEventListener('error', function (e) { err(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+
+  var asyncLoadWithFallBack = function(arr, success, reject) {
+      var currReject = function(){
+        reject()
+        arr.shift()
+        if(arr.length)
+          async(arr[0], success, currReject)
+        }
+
+      async(arr[0], success, currReject)
+  }
+
+  asyncLoadWithFallBack([
+    "https://cdn.jsdelivr.net/npm/webfontloader@1.6.28/webfontloader.min.js", 
+    "https://cdn.bootcss.com/webfont/1.6.28/webfontloader.js",
+    "/lib/webfontloader.min.js"
+  ], asyncCb, asyncErr)
+</script>
+        
+        <img class="loading" src="/assets/loading.svg" style="display: block; margin: 6rem auto 0 auto; width: 6rem; height: 6rem;" />
+        <div class="container container-unloaded">
+            <main class="main post-page">
+    <article class="article-entry">
+        <p>从 rpc 包的 Server 端 和 Client 端入手，学习 Server/Client 的源码实现。并以一个例子作为总结。最后总结了rpc实现的几个学习的要点。</p>
+<a id="more"></a>
+
+<h1 id="Golang-net-rpc-包学习"><a href="#Golang-net-rpc-包学习" class="headerlink" title="Golang net/rpc 包学习"></a>Golang net/rpc 包学习</h1><p>golang 提供了一个开箱即用的RPC服务，实现方式简约而不简单。</p>
+<h2 id="RPC-简单介绍"><a href="#RPC-简单介绍" class="headerlink" title="RPC 简单介绍"></a>RPC 简单介绍</h2><p>远程过程调用 (Remote Procedure Call，RPC) 是一种计算机通信协议。允许运行再一台计算机的程序调用另一个地址空间的子程序（一般是开放网络种的一台计算机），而程序员就像调用调用本地程序一样，无需额外的做交互编程。RPC 是一种 CS (Client-Server) 架构的模式，通过发送请求-接收响应的方式进行信息的交互。</p>
+<p>有很多广泛使用的RPC框架，例如 gRPC, Thrift, Dubbo, brpc 等。这里的RPC 框架有的实现了跨语言调用，有的实现了服务注册发现等。比我们今天介绍的官方提供的 rpc 包要使用广泛的多。但是，通过对<code>net/rpc</code>的学习，可以使我们对一个rpc框架做一个最基本的了解。</p>
+<h2 id="Golang-的实现"><a href="#Golang-的实现" class="headerlink" title="Golang 的实现"></a>Golang 的实现</h2><p>rpc 是 cs 架构，所以既有客户端，又有服务端。下面，我们先分析通信的编码，之后从服务端、客户端角度分析RPC的实现。</p>
+<h3 id="通信编码"><a href="#通信编码" class="headerlink" title="通信编码"></a>通信编码</h3><p>golang 在rpc 实现中，抽象了协议层，我们可以自定义协议实现我们自己的接口。如下是协议的接口：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 服务端</span></span><br><span class="line"><span class="keyword">type</span> ServerCodec <span class="keyword">interface</span> &#123;</span><br><span class="line">  ReadRequestHeader(*Request) error</span><br><span class="line">  ReadRequestBody(<span class="keyword">interface</span>&#123;&#125;) error</span><br><span class="line">  WriteResponse(*Response, <span class="keyword">interface</span>&#123;&#125;) error</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Close can be called multiple times and must be idempotent.</span></span><br><span class="line">  Close() error</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 客户端</span></span><br><span class="line"><span class="keyword">type</span> ClientCodec <span class="keyword">interface</span> &#123;</span><br><span class="line">  WriteRequest(*Request, <span class="keyword">interface</span>&#123;&#125;) error</span><br><span class="line">  ReadResponseHeader(*Response) error</span><br><span class="line">  ReadResponseBody(<span class="keyword">interface</span>&#123;&#125;) error</span><br><span class="line"></span><br><span class="line">  Close() error</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而包中提供了基于gob 二进制编码的编解码实现。当然我们也可以实现自己想要的编解码方式。</p>
+<h3 id="Server-端实现"><a href="#Server-端实现" class="headerlink" title="Server 端实现"></a>Server 端实现</h3><h4 id="结构定义"><a href="#结构定义" class="headerlink" title="结构定义"></a>结构定义</h4><p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Server <span class="keyword">struct</span> &#123;</span><br><span class="line">  serviceMap sync.Map   <span class="comment">// 保存Service</span></span><br><span class="line">  reqLock    sync.Mutex <span class="comment">// 读请求的锁</span></span><br><span class="line">  freeReq    *Request</span><br><span class="line">  respLock   sync.Mutex <span class="comment">// 写响应的锁</span></span><br><span class="line">  freeResp   *Response</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>server端通过互斥锁的方式支持了并发执行。由于每个请求和响应都需要定义Request/Response 对象，为了减少内存的分配，这里使用了一个freeReq/freeResp 链表实现了两个对象池。<br>当需要Request 对象时，从 freeReq 链表中获取，当使用完毕后，再放回链表中。</p>
+<h4 id="服务的注册"><a href="#服务的注册" class="headerlink" title="服务的注册"></a>服务的注册</h4><p>service保存在 Server 的 serviceMap 中，每个Service 的信息如下：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> service <span class="keyword">struct</span> &#123;</span><br><span class="line">  name   <span class="keyword">string</span>                 <span class="comment">// 服务名</span></span><br><span class="line">  rcvr   reflect.Value          <span class="comment">// 服务对象</span></span><br><span class="line">  typ    reflect.Type           <span class="comment">// 服务类型</span></span><br><span class="line">  method <span class="keyword">map</span>[<span class="keyword">string</span>]*methodType <span class="comment">// 注册方法</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从上面可以看到，一个类型以及该类型的多个方法可以被注册为一个Service。在注册服务时，通过下面的方法将服务保存在serviceMap 中。</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 默认使用对象方法名</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(server *Server)</span> <span class="title">Register</span><span class="params">(rcvr <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br><span class="line"><span class="comment">// 指定方法名</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(server *Server)</span> <span class="title">RegisterName</span><span class="params">(name <span class="keyword">string</span>, rcvr <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="服务的调用"><a href="#服务的调用" class="headerlink" title="服务的调用"></a>服务的调用</h4><p>首先，是rpc 服务的启动。和大部分的网络应用一致，在accept一个连接后，会启动一个协程做消息处理，代码如下：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> &#123;</span><br><span class="line">  conn, err := lis.Accept()</span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    log.Print(<span class="string">"rpc.Serve: accept:"</span>, err.Error())</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">go</span> server.ServeConn(conn)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其次，对于每一个连接，服务端会不断获取请求，并异步发送响应。代码如下：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> &#123;</span><br><span class="line">  <span class="comment">// 读取请求</span></span><br><span class="line">  service, mtype, req, argv, replyv, keepReading, err := server.readRequest(codec)</span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> debugLog &amp;&amp; err != io.EOF &#123;</span><br><span class="line">      log.Println(<span class="string">"rpc:"</span>, err)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> !keepReading &#123;</span><br><span class="line">      <span class="keyword">break</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> req != <span class="literal">nil</span> &#123;</span><br><span class="line">      <span class="comment">// 发送请求</span></span><br><span class="line">      server.sendResponse(sending, req, invalidRequest, codec, err.Error())</span><br><span class="line">      server.freeRequest(req)  <span class="comment">// 释放 req 对象</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">continue</span></span><br><span class="line">  &#125;</span><br><span class="line">  wg.Add(<span class="number">1</span>)</span><br><span class="line">  <span class="comment">// 并发处理每个请求</span></span><br><span class="line">  <span class="keyword">go</span> service.call(server, sending, wg, mtype, req, argv, replyv, codec)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后，由于异步发送请求，所以请求的顺序和响应顺序不一定一致。所以，在响应报文中，会携带请求报文的seq （序列号），保证消息的一致性。<br>除此之外，为了兼容http 服务，<code>net/rpc</code> 包还通过http包实现的 Hijack 方式，将 http 协议转换为 rpc 协议。代码如下：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(server *Server)</span> <span class="title">ServeHTTP</span><span class="params">(w http.ResponseWriter, req *http.Request)</span></span> &#123;</span><br><span class="line">  <span class="comment">// 客户端通过 CONNECT 方法连接</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// 通过Hijack 拿到tcp 连接</span></span><br><span class="line">  conn, _, err := w.(http.Hijacker).Hijack()</span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    log.Print(<span class="string">"rpc hijacking "</span>, req.RemoteAddr, <span class="string">": "</span>, err.Error())</span><br><span class="line">    <span class="keyword">return</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 发送客户端，支持 RPC 协议</span></span><br><span class="line">  io.WriteString(conn, <span class="string">"HTTP/1.0 "</span>+connected+<span class="string">"\n\n"</span>)</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 开始 RPC 的请求响应</span></span><br><span class="line">  server.ServeConn(conn)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Client-端实现"><a href="#Client-端实现" class="headerlink" title="Client 端实现"></a>Client 端实现</h3><p>客户端的连接相较于服务端是比较简单的。我们从发起连接、发送请求、读取响应三个角度学习。</p>
+<h4 id="RPC-的连接"><a href="#RPC-的连接" class="headerlink" title="RPC 的连接"></a>RPC 的连接</h4><p>由于该RPC支持HTTP协议做连接升级，因此，有几种连接方式。</p>
+<ol>
+<li>直接使用 tcp 协议。</li>
+</ol>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Dial</span><span class="params">(network, address <span class="keyword">string</span>)</span> <span class="params">(*Client, error)</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>使用 http 协议。 http 协议可以指定路径，或者使用默认的rpc 路径。</li>
+</ol>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 默认路径 "/_goRPC_"</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">DialHTTP</span><span class="params">(network, address <span class="keyword">string</span>)</span> <span class="params">(*Client, error)</span></span> &#123;&#125;</span><br><span class="line"><span class="comment">// 使用默认的路径</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">DialHTTPPath</span><span class="params">(network, address, path <span class="keyword">string</span>)</span> <span class="params">(*Client, error)</span></span> &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="请求的发送"><a href="#请求的发送" class="headerlink" title="请求的发送"></a>请求的发送</h4><p>RPC 请求的发送，提供了同步和异步的接口调用，方式如下：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 异步</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(client *Client)</span> <span class="title">Go</span><span class="params">(serviceMethod <span class="keyword">string</span>, args <span class="keyword">interface</span>&#123;&#125;, reply <span class="keyword">interface</span>&#123;&#125;, done <span class="keyword">chan</span> *Call)</span> *<span class="title">Call</span></span> &#123;&#125;</span><br><span class="line"><span class="comment">// 同步</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(client *Client)</span> <span class="title">Call</span><span class="params">(serviceMethod <span class="keyword">string</span>, args <span class="keyword">interface</span>&#123;&#125;, reply <span class="keyword">interface</span>&#123;&#125;)</span> <span class="title">error</span></span>&#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从内部实现可以知道，都是通过Go 异步的方式拿到返回数据。</p>
+<p>下面，我们看内部如何实现请求的发送：</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(client *Client)</span> <span class="title">send</span><span class="params">(call *Call)</span></span> &#123;</span><br><span class="line">  <span class="comment">// 客户端正常的情况下</span></span><br><span class="line">  seq := client.seq</span><br><span class="line">  client.seq++  <span class="comment">// 请求的序列号</span></span><br><span class="line">  client.pending[seq] = call</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 对请求进行编码，包括请求方法、参数。</span></span><br><span class="line">  <span class="comment">// Encode and send the request.</span></span><br><span class="line">  client.request.Seq = seq</span><br><span class="line">  client.request.ServiceMethod = call.ServiceMethod</span><br><span class="line"></span><br><span class="line">  <span class="comment">// client 可以并发 发起 Request, 然后异步等待 Done</span></span><br><span class="line">    err := client.codec.WriteRequest(&amp;client.request, call.Args)</span><br><span class="line">    <span class="comment">// 是否有发送失败，如果发送成功，则保存在pending map中，等待请求结果。</span></span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    client.mutex.Lock()</span><br><span class="line">    call = client.pending[seq]</span><br><span class="line">    <span class="built_in">delete</span>(client.pending, seq)</span><br><span class="line">    client.mutex.Unlock()</span><br><span class="line">    <span class="keyword">if</span> call != <span class="literal">nil</span> &#123;</span><br><span class="line">      call.Error = err</span><br><span class="line">      call.done()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从上面可以看出，对于一个客户端，可以同时发送多条请求，然后异步等待响应。</p>
+<h4 id="读取响应"><a href="#读取响应" class="headerlink" title="读取响应"></a>读取响应</h4><p>在rpc 连接成功后，会建立一个连接，专门用于做响应的读取。</p>
+<p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> err == <span class="literal">nil</span> &#123;</span><br><span class="line">  response = Response&#123;&#125;</span><br><span class="line">  err = client.codec.ReadResponseHeader(&amp;response)</span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    <span class="keyword">break</span></span><br><span class="line">  &#125;</span><br><span class="line">  seq := response.Seq</span><br><span class="line">  client.mutex.Lock()</span><br><span class="line">  call := client.pending[seq] <span class="comment">// 从 pending 列表中删除</span></span><br><span class="line">  <span class="built_in">delete</span>(client.pending, seq)</span><br><span class="line">  client.mutex.Unlock()</span><br><span class="line">  <span class="comment">// 解码body</span></span><br><span class="line">  <span class="comment">// 此处有多种判断，判断是否有异常</span></span><br><span class="line">  client.codec.ReadResponseBody(<span class="literal">nil</span>)</span><br><span class="line">  <span class="comment">// 最后通知异步等待的请求，调用完成</span></span><br><span class="line">  call.done()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过循环读取响应头，响应body，并将读取结果通知调用rpc 的异步请求，完成一次响应的读取。</p>
+<h2 id="简单例子"><a href="#简单例子" class="headerlink" title="简单例子"></a>简单例子</h2><p>下面我们官方提供的一个简单例子，对rpc包学习做个总结。</p>
+<h3 id="服务端"><a href="#服务端" class="headerlink" title="服务端"></a>服务端</h3><p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> Args <span class="keyword">struct</span> &#123;  <span class="comment">// 请求参数</span></span><br><span class="line">  A, B <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Quotient <span class="keyword">struct</span> &#123;  <span class="comment">// 一个响应的类型</span></span><br><span class="line">  Quo, Rem <span class="keyword">int</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> Arith <span class="keyword">int</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 定义了乘法和除法</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Arith)</span> <span class="title">Multiply</span><span class="params">(args *Args, reply *<span class="keyword">int</span>)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">  *reply = args.A * args.B</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(t *Arith)</span> <span class="title">Divide</span><span class="params">(args *Args, quo *Quotient)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">  <span class="keyword">if</span> args.B == <span class="number">0</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> errors.New(<span class="string">"divide by zero"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">  quo.Quo = args.A / args.B</span><br><span class="line">  quo.Rem = args.A % args.B</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">  serv := rpc.NewServer()</span><br><span class="line">  arith := <span class="built_in">new</span>(Arith)</span><br><span class="line">  serv.Register(arith)  <span class="comment">// 服务注册</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 通过http 监听，到时做协议转换</span></span><br><span class="line">  http.ListenAndServe(<span class="string">"0.0.0.0:3000"</span>, serv)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="客户端"><a href="#客户端" class="headerlink" title="客户端"></a>客户端</h3><p class="code-caption" data-lang="go" data-line_number="frontend" data-trim_indent="backend" data-label_position="outer" data-labels_left="Code" data-labels_right=":" data-labels_copy="Copy Code"><span class="code-caption-label"></span></p>
+
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">  client, err := rpc.DialHTTP(<span class="string">"tcp"</span>, <span class="string">"127.0.0.1:3000"</span>)</span><br><span class="line">  <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">    log.Fatal(<span class="string">"dialing:"</span>, err)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  dones := <span class="built_in">make</span>([]<span class="keyword">chan</span> *rpc.Call, <span class="number">0</span>, <span class="number">10</span>)</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 先同步发起请求</span></span><br><span class="line">  <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">10</span>; i++ &#123;</span><br><span class="line">    quotient := <span class="built_in">new</span>(Quotient)</span><br><span class="line">    args := &amp;Args&#123;i + <span class="number">10</span>, i&#125;</span><br><span class="line">    divCall := client.Go(<span class="string">"Arith.Divide"</span>, args, quotient, <span class="literal">nil</span>)</span><br><span class="line">    dones = <span class="built_in">append</span>(dones, divCall.Done)</span><br><span class="line">    log.Print(<span class="string">"send"</span>, i)</span><br><span class="line">  &#125;</span><br><span class="line">  log.Print(<span class="string">"---------------"</span>)</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 之后异步读取</span></span><br><span class="line">  <span class="keyword">for</span> idx, done := <span class="keyword">range</span> dones &#123;</span><br><span class="line">    replyCall := &lt;-done <span class="comment">// will be equal to divCall</span></span><br><span class="line">    args := replyCall.Args.(*Args)</span><br><span class="line">    reply := replyCall.Reply.(*Quotient)</span><br><span class="line">    log.Printf(<span class="string">"%d / %d = %d, %d %% %d = %d\n"</span>, args.A, args.B, reply.Quo,</span><br><span class="line">      args.A, args.B, reply.Rem)</span><br><span class="line">    log.Print(<span class="string">"recv"</span>, idx)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="我们可以学到什么"><a href="#我们可以学到什么" class="headerlink" title="我们可以学到什么"></a>我们可以学到什么</h2><p>最后，做一个学习的总结。</p>
+<ol>
+<li>对统一连接上的不同请求实现异步操作，通过请求、响应需要保证数据的一致性。</li>
+<li>链表方式实现一个对象池</li>
+<li>对 http 包中实现的Hijack 方式的一次简单实践，通过http协议升级为rpc协议。劫持了原有http协议的tcp连接，转为rpc使用。</li>
+<li>rpc 的实现，通过gob编码，应该是不支持与其他语言通信的。需要自己实现编解码方式。</li>
+<li>rpc 的实现，也不支持服务的注册和发现，需要我们自己去维护服务方。</li>
+</ol>
+
+    </article>
+    <!-- license  -->
+    
+        <div class="license-wrapper">
+            <p>原文作者：<a href="http://blog.lpflpf.cn">lpflpf</a>
+            <p>原文链接：<a href="http://blog.lpflpf.cn/passages/net-rpc/">http://blog.lpflpf.cn/passages/net-rpc/</a>
+            <p>发表日期：<a href="http://blog.lpflpf.cn/passages/net-rpc/">2020-06-01 09:56:41</a>
+            <p>更新日期：<a href="http://blog.lpflpf.cn/passages/net-rpc/">2021-01-11 14:41:06</a>
+            <p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+        </div>
+    
+    <!-- paginator  -->
+    <ul class="post-paginator">
+        <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href= "/passages/gin-router/" title= "Go Web 框架 Gin 路由的学习">
+                    <div class="nextTitle">Go Web 框架 Gin 路由的学习</div>
+                </a>
+            
+        </li>
+        <li class="previous">
+            
+                <div class="prevSlogan">Previous Post</div>
+                <a href= "/passages/golang-http-2/" title= "Golang Http 学习（二） Http Client 的实现">
+                    <div class="prevTitle">Golang Http 学习（二） Http Client 的实现</div>
+                </a>
+            
+        </li>
+    </ul>
+    <!-- 评论插件 -->
+    <!-- 来必力City版安装代码 -->
+
+<!-- City版安装代码已完成 -->
+    
+    
+    <!-- partial('_partial/comment/changyan') -->
+    <!--PC版-->
+
+
+    
+    
+
+    
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<div id="gitalk-container"></div>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script type="text/javascript">
+const gitalk = new Gitalk({
+    clientID: '9387310bb94f8c6bac8c',
+    clientSecret: '061aa504c7120786b907e336fc417c8e0873e26f',
+    id: window.location.pathname,
+    repo: 'hexo-blog',
+    owner: 'lpflpf',
+    admin: ['lpflpf']
+})
+gitalk.render('gitalk-container')
+</script>
+
+    <!-- 评论 -->
+</main>
+
+            <!-- profile -->
+            
+        </div>
+        <footer class="footer footer-unloaded">
+    <!-- social  -->
+    
+    <div class="social">
+        
+    
+        
+            
+                <a href="mailto:lipengfei634626165@163.com" class="iconfont-archer email" title=email ></a>
+            
+        
+    
+        
+            
+                <a href="//github.com/lpflpf" class="iconfont-archer github" target="_blank" title=github></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            
+                <a href="//segmentfault.com/u/__v__" class="iconfont-archer segmentFault" target="_blank" title=segmentFault></a>
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+
+    </div>
+    
+    <div class="copyright">
+        <span id="hexo-power">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a></span><span class="iconfont-archer power">&#xe635;</span><span id="theme-info">theme <a href="https://github.com/fi3ework/hexo-theme-archer" target="_blank">Archer</a></span> <br/><span ><a style="color:#777" target="_blank" href="http://beian.miit.gov.cn/">京ICP备17037267号</a></span>
+        		 	<div style="width:300px;margin:0 auto">
+		 		<a target="_blank" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=11010502046463" style="display:inline-block;text-decoration:none;height:20px;line-height:20px;"><img src="/intro/gonganbeian.png" style="float:left;"/><p style="float:left;height:20px;line-height:20px;margin: 0px 0px 0px 5px; color:#939393;">京公网安备 11010502046463号</p></a>
+		 	</div>
+
+    </div>
+ 
+    
+
+</footer>
+
+    </div>
+    <!-- toc -->
+    
+    <div class="toc-wrapper" style=
+    
+
+
+
+
+
+
+
+top:30vh;
+
+    >
+        <div class="toc-catalog">
+            <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
+        </div>
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Golang-net-rpc-包学习"><span class="toc-number">1.</span> <span class="toc-text">Golang net/rpc 包学习</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RPC-简单介绍"><span class="toc-number">1.1.</span> <span class="toc-text">RPC 简单介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Golang-的实现"><span class="toc-number">1.2.</span> <span class="toc-text">Golang 的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#通信编码"><span class="toc-number">1.2.1.</span> <span class="toc-text">通信编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Server-端实现"><span class="toc-number">1.2.2.</span> <span class="toc-text">Server 端实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#结构定义"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">结构定义</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#服务的注册"><span class="toc-number">1.2.2.2.</span> <span class="toc-text">服务的注册</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#服务的调用"><span class="toc-number">1.2.2.3.</span> <span class="toc-text">服务的调用</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Client-端实现"><span class="toc-number">1.2.3.</span> <span class="toc-text">Client 端实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RPC-的连接"><span class="toc-number">1.2.3.1.</span> <span class="toc-text">RPC 的连接</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#请求的发送"><span class="toc-number">1.2.3.2.</span> <span class="toc-text">请求的发送</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#读取响应"><span class="toc-number">1.2.3.3.</span> <span class="toc-text">读取响应</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#简单例子"><span class="toc-number">1.3.</span> <span class="toc-text">简单例子</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#服务端"><span class="toc-number">1.3.1.</span> <span class="toc-text">服务端</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#客户端"><span class="toc-number">1.3.2.</span> <span class="toc-text">客户端</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#我们可以学到什么"><span class="toc-number">1.4.</span> <span class="toc-text">我们可以学到什么</span></a></li></ol></li></ol>
+    </div>
+    
+    <div class="back-top iconfont-archer">&#xe639;</div>
+    <div class="sidebar sidebar-hide">
+    <ul class="sidebar-tabs sidebar-tabs-active-0">
+        <li class="sidebar-tab-archives"><span class="iconfont-archer">&#xe67d;</span><span class="tab-name">Archive</span></li>
+        <li class="sidebar-tab-tags"><span class="iconfont-archer">&#xe61b;</span><span class="tab-name">Tag</span></li>
+        <li class="sidebar-tab-categories"><span class="iconfont-archer">&#xe666;</span><span class="tab-name">Cate</span></li>
+    </ul>
+    <div class="sidebar-content sidebar-content-show-archive">
+          <div class="sidebar-panel-archives">
+    <!-- 在ejs中将archive按照时间排序 -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <div class="total-and-search">
+        <div class="total-archive">
+        Total : 53
+        </div>
+        <!-- search  -->
+        
+    </div>
+    
+    <div class="post-archive">
+    
+    
+    
+    
+    <div class="archive-year"> 2021 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/30</span><a class="archive-post-title" href= "/passages/go-database-query-optimization/" >Golang DB Query 的优化之旅</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/24</span><a class="archive-post-title" href= "/passages/use-unsafe-pointer-dynamic-load-data/" >使用原子操作保证并发安全</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/19</span><a class="archive-post-title" href= "/passages/kafka/" >Kafka 消费并行度提升</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/29</span><a class="archive-post-title" href= "/passages/pika-hash-table/" >Pika Hash 表 知识总结</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/18</span><a class="archive-post-title" href= "/passages/golang-singleflight-go/" >Golang Singleflight 使用和原理</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/11</span><a class="archive-post-title" href= "/passages/golang-db-scanner-valuer-interface/" >Golang Database 中 Scanner/ Valuer 接口学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">01/08</span><a class="archive-post-title" href= "/passages/golang-rpc/" >Golang反射学习：手写一个RPC</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2020 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/21</span><a class="archive-post-title" href= "/passages/golang-sync-map/" >Golang sync.Map 实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/time-limiter/" >Golang 限流器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/19</span><a class="archive-post-title" href= "/passages/circuit-breaker/" >Golang 熔断器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/gin-router/" >Go Web 框架 Gin 路由的学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/golang-http-2/" >Golang Http 学习（二） Http Client 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/01</span><a class="archive-post-title" href= "/passages/net-rpc/" >Golang Net/rpc 包的学习和使用</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/11</span><a class="archive-post-title" href= "/passages/golang-http-1/" >Golang Http 学习（一） Http Server 的实现</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/06</span><a class="archive-post-title" href= "/passages/golang-net/" >Golang Net 包学习</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/03</span><a class="archive-post-title" href= "/passages/golang-container/" >Golang 容器的学习与实践</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/30</span><a class="archive-post-title" href= "/passages/golang-context/" >Golang Context</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/28</span><a class="archive-post-title" href= "/passages/golang-map-4/" >Golang Map 实现 （四）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/26</span><a class="archive-post-title" href= "/passages/golang-map-3/" >Golang Map 实现（三）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/24</span><a class="archive-post-title" href= "/passages/string-reverse/" >字符串反转的面试题，你会吗</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/23</span><a class="archive-post-title" href= "/passages/golang-map-2/" >Golang Map 实现（二）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/21</span><a class="archive-post-title" href= "/passages/golang-map-1/" >Golang Map实现（一）</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/20</span><a class="archive-post-title" href= "/passages/golang-slice/" >Golang-Slice</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/17</span><a class="archive-post-title" href= "/passages/golang-memory-leak/" >Golang 的内存泄漏</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/16</span><a class="archive-post-title" href= "/passages/golang-trace-example/" >Golang Trace 的一个例子</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/14</span><a class="archive-post-title" href= "/passages/golang-trace/" >Golang 性能测试 (3) 跟踪刨析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/11</span><a class="archive-post-title" href= "/passages/golang-profile/" >Golang 性能测试  (2) 性能分析</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/09</span><a class="archive-post-title" href= "/passages/golang-benchmark/" >Golang 性能测试 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/08</span><a class="archive-post-title" href= "/passages/blank_space/" >你不知道的空格</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor3/" >Supervisor 的使用和进阶 (3)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/06</span><a class="archive-post-title" href= "/passages/supervisor2/" >Supervisor 的使用和进阶 (2)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/03</span><a class="archive-post-title" href= "/passages/supervisor1/" >Supervisor 的使用和进阶 (1)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">04/02</span><a class="archive-post-title" href= "/passages/python-word-excel/" >Python 操作 Excel 和 Word</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2019 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">11/04</span><a class="archive-post-title" href= "/passages/golang-desgin-pattern/" >Golang 中的一些设计模式</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/19</span><a class="archive-post-title" href= "/passages/golang-1.13/" >Golang 1.13</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/12</span><a class="archive-post-title" href= "/passages/nsqd-study-5/" >消息队列 NSQ 源码学习笔记 (五)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/10</span><a class="archive-post-title" href= "/passages/nsqd-study-4/" >消息队列 NSQ 源码学习笔记 (四)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/06</span><a class="archive-post-title" href= "/passages/nsqd-study-3/" >消息队列 NSQ 源码学习笔记 (三)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/04</span><a class="archive-post-title" href= "/passages/nsqd-study-2/" >消息队列 NSQ 源码学习笔记 (二)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">09/02</span><a class="archive-post-title" href= "/passages/nsqd-study-1/" >消息队列 NSQ 源码学习笔记 (一)</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/05</span><a class="archive-post-title" href= "/passages/golang-noCopy/" >为什么需要 noCopy</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/27</span><a class="archive-post-title" href= "/passages/golang-json-encoding/" >Json Map 和 Struct 编码对比</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/25</span><a class="archive-post-title" href= "/passages/php-self-increasing/" >Php 自增运算符</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-mod/" >Go Mod</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-binary-compress/" >Go Binary Compress</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/20</span><a class="archive-post-title" href= "/passages/golang-add-build-info-in-binary/" >Golang 二进制文件中添加编译信息</a>
+        </li>
+    
+    
+    
+    
+    
+        </ul>
+    
+    <div class="archive-year"> 2018 </div>
+    <ul class="year-list">
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">07/26</span><a class="archive-post-title" href= "/passages/php-ctype/" >由Ctype_digit 引起的一个问题</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/18</span><a class="archive-post-title" href= "/passages/distribuation-id-generator/" >分布式发号器</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/15</span><a class="archive-post-title" href= "/passages/golang-basic-structure/" >Go Base Syntax</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/06</span><a class="archive-post-title" href= "/passages/php-cycle-life/" >PHP Cycle Life</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">06/05</span><a class="archive-post-title" href= "/passages/php-array_merge/" >PHP Array_merge 和 Array + Array 的区别</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/30</span><a class="archive-post-title" href= "/passages/php-singleton/" >PHP Singleton</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
+            <span class="archive-post-date">05/26</span><a class="archive-post-title" href= "/passages/mysql-hint/" >Mysql Hint 学习</a>
+        </li>
+    
+    </div>
+  </div>
+        <div class="sidebar-panel-tags">
+    <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="golang"><span class="iconfont-archer">&#xe606;</span>golang</span>
+    
+        <span class="sidebar-tag-name" data-tags="circuit-breaker"><span class="iconfont-archer">&#xe606;</span>circuit-breaker</span>
+    
+        <span class="sidebar-tag-name" data-tags="id generator"><span class="iconfont-archer">&#xe606;</span>id generator</span>
+    
+        <span class="sidebar-tag-name" data-tags="distribuation"><span class="iconfont-archer">&#xe606;</span>distribuation</span>
+    
+        <span class="sidebar-tag-name" data-tags="gin"><span class="iconfont-archer">&#xe606;</span>gin</span>
+    
+        <span class="sidebar-tag-name" data-tags="http router"><span class="iconfont-archer">&#xe606;</span>http router</span>
+    
+        <span class="sidebar-tag-name" data-tags="database query"><span class="iconfont-archer">&#xe606;</span>database query</span>
+    
+        <span class="sidebar-tag-name" data-tags="go build"><span class="iconfont-archer">&#xe606;</span>go build</span>
+    
+        <span class="sidebar-tag-name" data-tags="base structure"><span class="iconfont-archer">&#xe606;</span>base structure</span>
+    
+        <span class="sidebar-tag-name" data-tags="benchmark"><span class="iconfont-archer">&#xe606;</span>benchmark</span>
+    
+        <span class="sidebar-tag-name" data-tags="container"><span class="iconfont-archer">&#xe606;</span>container</span>
+    
+        <span class="sidebar-tag-name" data-tags="database/sql"><span class="iconfont-archer">&#xe606;</span>database/sql</span>
+    
+        <span class="sidebar-tag-name" data-tags="设计模式"><span class="iconfont-archer">&#xe606;</span>设计模式</span>
+    
+        <span class="sidebar-tag-name" data-tags="http"><span class="iconfont-archer">&#xe606;</span>http</span>
+    
+        <span class="sidebar-tag-name" data-tags="map"><span class="iconfont-archer">&#xe606;</span>map</span>
+    
+        <span class="sidebar-tag-name" data-tags="net"><span class="iconfont-archer">&#xe606;</span>net</span>
+    
+        <span class="sidebar-tag-name" data-tags="noCopy"><span class="iconfont-archer">&#xe606;</span>noCopy</span>
+    
+        <span class="sidebar-tag-name" data-tags="profile"><span class="iconfont-archer">&#xe606;</span>profile</span>
+    
+        <span class="sidebar-tag-name" data-tags="reflect"><span class="iconfont-archer">&#xe606;</span>reflect</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleflight"><span class="iconfont-archer">&#xe606;</span>singleflight</span>
+    
+        <span class="sidebar-tag-name" data-tags="slice"><span class="iconfont-archer">&#xe606;</span>slice</span>
+    
+        <span class="sidebar-tag-name" data-tags="sync"><span class="iconfont-archer">&#xe606;</span>sync</span>
+    
+        <span class="sidebar-tag-name" data-tags="trace"><span class="iconfont-archer">&#xe606;</span>trace</span>
+    
+        <span class="sidebar-tag-name" data-tags="kafka"><span class="iconfont-archer">&#xe606;</span>kafka</span>
+    
+        <span class="sidebar-tag-name" data-tags="Mysql"><span class="iconfont-archer">&#xe606;</span>Mysql</span>
+    
+        <span class="sidebar-tag-name" data-tags="Hint"><span class="iconfont-archer">&#xe606;</span>Hint</span>
+    
+        <span class="sidebar-tag-name" data-tags="net/rpc"><span class="iconfont-archer">&#xe606;</span>net/rpc</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsq"><span class="iconfont-archer">&#xe606;</span>nsq</span>
+    
+        <span class="sidebar-tag-name" data-tags="messageQueue"><span class="iconfont-archer">&#xe606;</span>messageQueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="nsqlookupd"><span class="iconfont-archer">&#xe606;</span>nsqlookupd</span>
+    
+        <span class="sidebar-tag-name" data-tags="消息队列"><span class="iconfont-archer">&#xe606;</span>消息队列</span>
+    
+        <span class="sidebar-tag-name" data-tags="diskqueue"><span class="iconfont-archer">&#xe606;</span>diskqueue</span>
+    
+        <span class="sidebar-tag-name" data-tags="array_merge"><span class="iconfont-archer">&#xe606;</span>array_merge</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP 开发"><span class="iconfont-archer">&#xe606;</span>PHP 开发</span>
+    
+        <span class="sidebar-tag-name" data-tags="ctype函数簇"><span class="iconfont-archer">&#xe606;</span>ctype函数簇</span>
+    
+        <span class="sidebar-tag-name" data-tags="cycle life"><span class="iconfont-archer">&#xe606;</span>cycle life</span>
+    
+        <span class="sidebar-tag-name" data-tags="Request 处理"><span class="iconfont-archer">&#xe606;</span>Request 处理</span>
+    
+        <span class="sidebar-tag-name" data-tags="PHP Source Analysis"><span class="iconfont-archer">&#xe606;</span>PHP Source Analysis</span>
+    
+        <span class="sidebar-tag-name" data-tags="singleton"><span class="iconfont-archer">&#xe606;</span>singleton</span>
+    
+        <span class="sidebar-tag-name" data-tags="serialize / unserialize"><span class="iconfont-archer">&#xe606;</span>serialize / unserialize</span>
+    
+        <span class="sidebar-tag-name" data-tags="clone"><span class="iconfont-archer">&#xe606;</span>clone</span>
+    
+        <span class="sidebar-tag-name" data-tags="pika"><span class="iconfont-archer">&#xe606;</span>pika</span>
+    
+        <span class="sidebar-tag-name" data-tags="cache"><span class="iconfont-archer">&#xe606;</span>cache</span>
+    
+        <span class="sidebar-tag-name" data-tags="Python"><span class="iconfont-archer">&#xe606;</span>Python</span>
+    
+        <span class="sidebar-tag-name" data-tags="Excel"><span class="iconfont-archer">&#xe606;</span>Excel</span>
+    
+        <span class="sidebar-tag-name" data-tags="Word"><span class="iconfont-archer">&#xe606;</span>Word</span>
+    
+        <span class="sidebar-tag-name" data-tags="win32com"><span class="iconfont-archer">&#xe606;</span>win32com</span>
+    
+        <span class="sidebar-tag-name" data-tags="interview"><span class="iconfont-archer">&#xe606;</span>interview</span>
+    
+        <span class="sidebar-tag-name" data-tags="服务管理"><span class="iconfont-archer">&#xe606;</span>服务管理</span>
+    
+        <span class="sidebar-tag-name" data-tags="rate limiter"><span class="iconfont-archer">&#xe606;</span>rate limiter</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-tags-empty">&#xe678;</div>
+    <div class="tag-load-fail" style="display: none; color: #ccc; font-size: 0.6rem;">
+    缺失模块。<br/>
+    1、请确保node版本大于6.2<br/>
+    2、在博客根目录（注意不是archer根目录）执行以下命令：<br/>
+    <span style="color: #f75357; font-size: 1rem; line-height: 2rem;">npm i hexo-generator-json-content --save</span><br/>
+    3、在根目录_config.yml里添加配置：
+    <pre style="color: #787878; font-size: 0.6rem;">
+jsonContent:
+  meta: false
+  pages: false
+  posts:
+    title: true
+    date: true
+    path: true
+    text: false
+    raw: false
+    content: false
+    slug: false
+    updated: false
+    comments: false
+    link: false
+    permalink: false
+    excerpt: false
+    categories: true
+    tags: true</pre>
+    </div> 
+    <div class="sidebar-tags-list"></div>
+</div>
+        <div class="sidebar-panel-categories">
+    <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="分布式"><span class="iconfont-archer">&#xe60a;</span>分布式</span>
+    
+        <span class="sidebar-category-name" data-categories="golang"><span class="iconfont-archer">&#xe60a;</span>golang</span>
+    
+        <span class="sidebar-category-name" data-categories="golang/php"><span class="iconfont-archer">&#xe60a;</span>golang/php</span>
+    
+        <span class="sidebar-category-name" data-categories="Message-Queue"><span class="iconfont-archer">&#xe60a;</span>Message-Queue</span>
+    
+        <span class="sidebar-category-name" data-categories="mysql"><span class="iconfont-archer">&#xe60a;</span>mysql</span>
+    
+        <span class="sidebar-category-name" data-categories="php"><span class="iconfont-archer">&#xe60a;</span>php</span>
+    
+    </div>
+    <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
+    <div class="sidebar-categories-list"></div>
+</div>
+    </div>
+</div> 
+    <script>
+    var siteMeta = {
+        root: "/",
+        author: "lpflpf"
+    }
+</script>
+    <!-- CDN failover -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+    <script type="text/javascript">
+        if (typeof window.$ === 'undefined')
+        {
+            console.warn('jquery load from jsdelivr failed, will load local script')
+            document.write('<script src="/lib/jquery.min.js">\x3C/script>')
+        }
+    </script>
+    <script src="/scripts/main.js"></script>
+    <!-- algolia -->
+    
+    <!-- busuanzi  -->
+    
+    <!-- CNZZ  -->
+    
+    </div>
+    <!-- async load share.js -->
+    
+        <script src="/scripts/share.js" async></script>    
+     
+    </body>
+
+     
+    <script> 
+//        $(document).ready(function(){ 
+//            hljs.highlightAll();
+//        }); 
+    </script>
+    
+</html>
+
+
